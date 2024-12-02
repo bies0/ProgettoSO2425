@@ -107,7 +107,6 @@ int emptyChild(pcb_t* p)
   return list_empty(&(p->p_child));
 }
 
-// Devo scorrere tutta la lista di child fino ad arrivare al parent?
 void insertChild(pcb_t* prnt, pcb_t* p)
 {
   if (emptyChild(prnt)) {
@@ -128,17 +127,26 @@ pcb_t* removeChild(pcb_t* p)
   if (p == NULL || emptyChild(p)) return NULL;
   pcb_t *first_child = container_of(list_next(&(p->p_child)), pcb_t, p_child);
   if (!list_empty(&(first_child->p_sib))) {
+    klog_print("Child has siblings > ");
     pcb_t *first_sibling = container_of(list_next(&(first_child->p_sib)), pcb_t, p_sib);
-    p->p_child.next = &(first_sibling->p_child);
+    list_add(&(first_sibling->p_child), &(p->p_child));
     list_del(&(first_child->p_sib));
   }
   list_del(&(first_child->p_child));
   first_child->p_parent = NULL;
+  klog_print("Child removed | ");
   return first_child;
 }
 
 pcb_t* outChild(pcb_t* p)
 {
-  (void) p;
-  return NULL;
+  if(p == NULL || p->p_parent == NULL) return NULL;
+  
+  pcb_t* parent = p->p_parent;
+  if(&(p->p_child) == list_next(&(parent->p_child))) return removeChild(parent); 
+  else {
+    list_del(&(p->p_sib));
+    p->p_parent = NULL;
+    return p;
+  }
 }
