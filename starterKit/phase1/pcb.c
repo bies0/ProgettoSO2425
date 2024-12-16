@@ -36,6 +36,7 @@ void initPcbs()
 
 void freePcb(pcb_t* p)
 {
+  if (p == NULL) return;
   list_add(&(p->p_list), &pcbFree_h);
 }
 
@@ -73,11 +74,13 @@ int emptyProcQ(struct list_head* head)
 
 void insertProcQ(struct list_head* head, pcb_t* p)
 {
+  if (head == NULL || p == NULL) return;
   list_add_tail(&(p->p_list), head);
 }
 
 pcb_t* headProcQ(struct list_head* head)
 {
+  if (head == NULL) return NULL;
   if (head->next == head) return NULL;
   return container_of(head->next, pcb_t, p_list);
 }
@@ -92,6 +95,7 @@ pcb_t* removeProcQ(struct list_head* head)
 
 pcb_t* outProcQ(struct list_head* head, pcb_t* p)
 {
+  if (head == NULL || p == NULL) return NULL;
   struct list_head* iter;
   list_for_each(iter, head){
     if (iter == &(p->p_list)){
@@ -104,11 +108,12 @@ pcb_t* outProcQ(struct list_head* head, pcb_t* p)
 
 int emptyChild(pcb_t* p)
 {
-  return list_empty(&(p->p_child));
+  return (p != NULL && list_empty(&(p->p_child)));
 }
 
 void insertChild(pcb_t* prnt, pcb_t* p)
 {
+  if (prnt == NULL || p == NULL) return;
   if (emptyChild(prnt)) {
     INIT_LIST_HEAD(&(prnt->p_child));
     INIT_LIST_HEAD(&(p->p_child));
