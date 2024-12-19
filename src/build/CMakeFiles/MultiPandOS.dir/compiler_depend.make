@@ -9,7 +9,8 @@ CMakeFiles/MultiPandOS.dir/phase1/asl.c.o: /home/mathieu/Uni/2_Anno/SistemiOpera
   /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/headers/const.h \
   /usr/include/uriscv/const.h \
   /usr/include/uriscv/csr.h \
-  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/headers/listx.h
+  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/headers/listx.h \
+  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/phase1/headers/pcb.h
 
 CMakeFiles/MultiPandOS.dir/phase1/p1test.c.o: /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/phase1/p1test.c \
   /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/headers/const.h \

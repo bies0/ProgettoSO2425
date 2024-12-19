@@ -12,12 +12,12 @@
         }
     },
     "execution-rom": "/usr/local/share/uriscv/exec.rom.uriscv",
-    "num-processors": 1,
-    "num-ram-frames": 64,
+    "num-processors": 8,
+    "num-ram-frames": 256,
     "symbol-table": {
         "asid": 64,
         "file": "build/MultiPandOS.stab.uriscv"
     },
-    "tlb-floor-address": "0xffffffff",
+    "tlb-floor-address": "0x80000000",
     "tlb-size": 16
 }
