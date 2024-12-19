@@ -1,4 +1,4 @@
-# Install script for directory: /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit
+# Install script for directory: /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

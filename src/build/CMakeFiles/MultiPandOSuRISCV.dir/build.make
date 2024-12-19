@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit
+CMAKE_SOURCE_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build
+CMAKE_BINARY_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build
 
 # Utility rule file for MultiPandOSuRISCV.
 
@@ -67,7 +67,7 @@ include CMakeFiles/MultiPandOSuRISCV.dir/compiler_depend.make
 include CMakeFiles/MultiPandOSuRISCV.dir/progress.make
 
 CMakeFiles/MultiPandOSuRISCV: MultiPandOS
-	uriscv-elf2uriscv -k /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/MultiPandOS
+	uriscv-elf2uriscv -k /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/MultiPandOS
 
 MultiPandOSuRISCV: CMakeFiles/MultiPandOSuRISCV
 MultiPandOSuRISCV: CMakeFiles/MultiPandOSuRISCV.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/MultiPandOSuRISCV.dir/clean:
 .PHONY : CMakeFiles/MultiPandOSuRISCV.dir/clean
 
 CMakeFiles/MultiPandOSuRISCV.dir/depend:
-	cd /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles/MultiPandOSuRISCV.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles/MultiPandOSuRISCV.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/MultiPandOSuRISCV.dir/depend
 

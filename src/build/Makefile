@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit
+CMAKE_SOURCE_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build
+CMAKE_BINARY_DIR = /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -166,30 +166,6 @@ phase1/asl.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase1/asl.c.s
 .PHONY : phase1/asl.c.s
 
-phase1/p1test.o: phase1/p1test.c.o
-.PHONY : phase1/p1test.o
-
-# target to build an object file
-phase1/p1test.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase1/p1test.c.o
-.PHONY : phase1/p1test.c.o
-
-phase1/p1test.i: phase1/p1test.c.i
-.PHONY : phase1/p1test.i
-
-# target to preprocess a source file
-phase1/p1test.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase1/p1test.c.i
-.PHONY : phase1/p1test.c.i
-
-phase1/p1test.s: phase1/p1test.c.s
-.PHONY : phase1/p1test.s
-
-# target to generate assembly for a file
-phase1/p1test.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase1/p1test.c.s
-.PHONY : phase1/p1test.c.s
-
 phase1/pcb.o: phase1/pcb.c.o
 .PHONY : phase1/pcb.o
 
@@ -213,6 +189,30 @@ phase1/pcb.s: phase1/pcb.c.s
 phase1/pcb.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase1/pcb.c.s
 .PHONY : phase1/pcb.c.s
+
+phase2/initial.o: phase2/initial.c.o
+.PHONY : phase2/initial.o
+
+# target to build an object file
+phase2/initial.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase2/initial.c.o
+.PHONY : phase2/initial.c.o
+
+phase2/initial.i: phase2/initial.c.i
+.PHONY : phase2/initial.i
+
+# target to preprocess a source file
+phase2/initial.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase2/initial.c.i
+.PHONY : phase2/initial.c.i
+
+phase2/initial.s: phase2/initial.c.s
+.PHONY : phase2/initial.s
+
+# target to generate assembly for a file
+phase2/initial.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/MultiPandOS.dir/build.make CMakeFiles/MultiPandOS.dir/phase2/initial.c.s
+.PHONY : phase2/initial.c.s
 
 usr/local/share/uriscv/crtso.o: usr/local/share/uriscv/crtso.S.o
 .PHONY : usr/local/share/uriscv/crtso.o
@@ -243,12 +243,12 @@ help:
 	@echo "... phase1/asl.o"
 	@echo "... phase1/asl.i"
 	@echo "... phase1/asl.s"
-	@echo "... phase1/p1test.o"
-	@echo "... phase1/p1test.i"
-	@echo "... phase1/p1test.s"
 	@echo "... phase1/pcb.o"
 	@echo "... phase1/pcb.i"
 	@echo "... phase1/pcb.s"
+	@echo "... phase2/initial.o"
+	@echo "... phase2/initial.i"
+	@echo "... phase2/initial.s"
 	@echo "... usr/local/share/uriscv/crtso.o"
 	@echo "... usr/local/share/uriscv/liburiscv.o"
 .PHONY : help

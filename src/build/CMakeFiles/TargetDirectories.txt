@@ -1,4 +1,4 @@
-/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles/MultiPandOS.dir
-/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles/MultiPandOSuRISCV.dir
-/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles/edit_cache.dir
-/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/starterKit/build/CMakeFiles/rebuild_cache.dir
+/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles/MultiPandOS.dir
+/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles/MultiPandOSuRISCV.dir
+/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles/edit_cache.dir
+/home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/build/CMakeFiles/rebuild_cache.dir
