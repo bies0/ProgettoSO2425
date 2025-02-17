@@ -1,5 +1,6 @@
 *.o
 *.out
 *~
+./src/build/*
 ./src/build/
 *.uriscv

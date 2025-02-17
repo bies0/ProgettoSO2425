@@ -11,4 +11,8 @@ CMakeFiles/MultiPandOS.dir/phase2/initial.c.o: \
  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/./p2test.c \
  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/./../headers/const.h \
  /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/./../headers/types.h \
- /usr/include/uriscv/liburiscv.h
+ /usr/include/uriscv/liburiscv.h \
+ /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/./exceptions.c \
+ /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/../klog.c \
+ /usr/include/uriscv/arch.h \
+ /home/mathieu/Uni/2_Anno/SistemiOperativi/progetto/src/phase2/./const.h
