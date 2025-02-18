@@ -215,8 +215,7 @@
 
 #define NRSEMAPHORES 49         /* Numero semafori devices + pseudo clock */
 #define NSUPPSEM 48 		/* Numero di semafori devices per il livello di supporto */
-// #define NCPU 8 /* Numero di processori attivi */
-#define NCPU 1
+#define NCPU 8 /* Numero di processori attivi */
 
 #define DISKBACK     1
 #define FLASHBACK    0
@@ -233,6 +232,13 @@
 
 #define STATE_T_SIZE_IN_BYTES 148 
 #define GET_EXCEPTION_STATE_PTR(i) ((state_t*) (BIOSDATAPAGE + i * STATE_T_SIZE_IN_BYTES))
+#define CAUSE_EXCCODE_MASK      0x7FFFFFFF
 
+#define IRT_START 0x10000300
+#define IRT_RP_BIT_ON (1 << 28)
+/* numero di registri della Interrupt Routing Table */
+#define IRT_NUM_ENTRY 48
+/* Task Priority Register */
+#define TPR 0x10000408 
 #endif
 

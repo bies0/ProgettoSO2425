@@ -1,6 +1,7 @@
 *.o
 *.out
 *~
-./src/build/*
-./src/build/
+/src/build/
 *.uriscv
+.vscode
+config_machine.json

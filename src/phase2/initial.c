@@ -1,16 +1,12 @@
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/asl.h"
+#include "../headers/const.h"
 #include "./p2test.c"
 #include "./exceptions.c"
-#include "../klog.c"
 #include "uriscv/arch.h"
-#include "./const.h"
+#include "../klog.c"
 
-// TODO: non funziona l'include "./const.h"
-#define IRT_START 0x10000300
-#define IRT_RP_BIT_ON (1 << 28)
-#define IRT_NUM_ENTRY 48
-#define TPR 0x10000408 
+// TODO controllare errori nel file ASL.c (warning con i tipi)
 
 // ma siamo sicuro di queste due?
 extern void exceptionHandler();
