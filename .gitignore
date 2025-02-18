@@ -4,4 +4,3 @@
 /src/build/
 *.uriscv
 .vscode
-config_machine.json
