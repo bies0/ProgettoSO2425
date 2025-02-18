@@ -12,7 +12,9 @@
 
 ## Install:
 
-1. ```git clone https://github.com/Hamilnvt/ProgettoSO2425.git```
-2. ```mkdir build && cd build```
-3. ```cmake ..```
-4. ```make```
+```bash
+git clone https://github.com/Hamilnvt/ProgettoSO2425.git
+mkdir build && cd build
+cmake ..
+make
+```
