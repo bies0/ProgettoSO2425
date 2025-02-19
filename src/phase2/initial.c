@@ -3,11 +3,14 @@
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
-#include "uriscv/arch.h"
 #include "../klog.c"
+
+#include "uriscv/arch.h"
+#include "uriscv/cpu.h"
 
 #include "./p2test.c"
 #include "./exceptions.c"
+#include "./interrupts.c"
 #include "./scheduler.c"
 
 // 1. Global variables declaration
@@ -16,8 +19,6 @@
 
 int main()
 {
-    klog_print("Inizio Main | ");
-
     // 2. Pass Up Vectors population
     for (int i = 0; i < NCPU; i++) {
         passupvector_t v = {
@@ -28,12 +29,10 @@ int main()
         };
         *((passupvector_t *)(PASSUPVECTOR + i*0x10)) = v;
     }
-    klog_print("Passupvectors | ");
 
     // 3. Initialization
     initPcbs();
     initASL();
-    klog_print("pcbs e asl | ");
 
     // 4. Variables initialization
     process_count = 0;
@@ -41,26 +40,28 @@ int main()
     for (int i = 0; i < NCPU; i++) current_process[i] = NULL;
     for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = (semd_t){0};
     global_lock = 0;
-    klog_print("variabili globali | ");
 
     // 5. System-wide Interval Timer loading
     LDIT(PSECOND);
-    klog_print("timer | ");
 
     // 6.  First PCB instantiation
     pcb_t *first_pcb = allocPcb();
     if (first_pcb == NULL) return 1; // che si fa?
 
     first_pcb->p_s = (state_t){
+        .pc_epc = (memaddr)test,
         .mie = MIE_ALL,
         .status = MSTATUS_MIE_MASK | MSTATUS_MPP_M,
-        .pc_epc = (memaddr)test
-    };
+    }; 
+    RAMTOP(first_pcb->p_s.reg_sp);
     // Process tree fields, p_time, p_semAdd and p_supportStruct are already set to NULL/initialized by allocPcb()
 
     insertProcQ(&ready_queue, first_pcb);
     process_count++;
-    klog_print("first pcb (manca SP?) | "); // TODO: manca SP set to RAMTOP
+    //INITCPU(0, &(first_pcb->p_s)); // TODO: stiamo provando, nah
+    LDST(&(first_pcb->p_s)); // TODO: si potrebbe fare anche cosi'.
+                             // Non sappiamo se sia giusto che CPU0 esegua subito il test oppure debba chiamare lo scheduler.
+    klog_print("first pcb | ");
 
     // 7. Interrupt routing
     int cpu_counter = -1;
@@ -71,25 +72,26 @@ int main()
         *((memaddr *)(IRT_START + i*WS)) |= (1 << cpu_counter);
     }
     *((memaddr *)TPR) = 0;
-    klog_print("interrupt | ");
 
     // 8. CPUs state setting
+    state_t start_state = {
+        .status = MSTATUS_MPP_M,
+        .pc_epc = (memaddr)scheduler,
+        .gpr = {0},
+        .entry_hi = 0,
+        .cause = 0,
+        .mie = 0
+    };
+    // CPUs start (quando vengono inizializzate, le cpu chiamano subito scheduler e bloccano tutto, se si mette questo for dopo la chiamata di CPU0 allo scheduler, queste poi non partono mai)
     for (int i = 1; i < NCPU; i++) {
-        pcb_t *pcb = allocPcb();
-        if (pcb == NULL) return 1; // che si fa?
-
-        pcb->p_s = (state_t){
-            .status = MSTATUS_MPP_M,
-            .pc_epc = (memaddr)scheduler,
-            .reg_sp = (0x20020000 + i * PAGESIZE)
-        };
+        start_state.reg_sp = (0x20020000 + i * PAGESIZE);
+        INITCPU(i, &start_state); // TODO: non siamo convinti
     }
-    // All the other fields have already been initialized in allocPcb()
     klog_print("CPUs setting | ");
 
-    klog_print("Scheduleeeeer | "); // Chiama lo scheduler
+    // 9. Scheduler calling
+    klog_print("Scheduleeeeer | ");
     scheduler();
 
-    klog_print("Fine Main | ");
     return 0;
 }

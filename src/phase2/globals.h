@@ -4,9 +4,10 @@
     #define EXTERN extern
 #endif
 
-EXTERN void exceptionHandler();
 EXTERN void test();
 EXTERN void scheduler();
+EXTERN void exceptionHandler();
+EXTERN void interruptHandler();
 
 EXTERN int process_count;
 EXTERN struct list_head ready_queue;
