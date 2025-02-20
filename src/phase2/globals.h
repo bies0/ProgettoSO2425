@@ -14,3 +14,5 @@ EXTERN struct list_head ready_queue;
 EXTERN struct pcb_t *current_process[NCPU];
 EXTERN struct semd_t device_semaphores[NRSEMAPHORES];
 EXTERN volatile unsigned int global_lock;
+
+EXTERN int lock_acquired_0; // lock acquired by CPU0

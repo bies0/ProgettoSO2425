@@ -23,7 +23,7 @@ int main()
     for (int i = 0; i < NCPU; i++) {
         passupvector_t v = {
             .tlb_refill_handler  = (memaddr)uTLB_RefillHandler,
-            .tlb_refill_stackPtr = i == 0 ? KERNELSTACK : (0x200020000 + i*PAGESIZE),
+            .tlb_refill_stackPtr = i == 0 ? KERNELSTACK : (0x20020000 + i*PAGESIZE),
             .exception_handler   = (memaddr)exceptionHandler,
             .exception_stackPtr  = i == 0 ? KERNELSTACK : (0x20020000 + i*PAGESIZE)
         };
@@ -46,7 +46,6 @@ int main()
 
     // 6.  First PCB instantiation
     pcb_t *first_pcb = allocPcb();
-    if (first_pcb == NULL) return 1; // che si fa?
 
     first_pcb->p_s = (state_t){
         .pc_epc = (memaddr)test,
@@ -58,9 +57,6 @@ int main()
 
     insertProcQ(&ready_queue, first_pcb);
     process_count++;
-    //INITCPU(0, &(first_pcb->p_s)); // TODO: stiamo provando, nah
-    LDST(&(first_pcb->p_s)); // TODO: si potrebbe fare anche cosi'.
-                             // Non sappiamo se sia giusto che CPU0 esegua subito il test oppure debba chiamare lo scheduler.
     klog_print("first pcb | ");
 
     // 7. Interrupt routing
@@ -82,10 +78,11 @@ int main()
         .cause = 0,
         .mie = 0
     };
-    // CPUs start (quando vengono inizializzate, le cpu chiamano subito scheduler e bloccano tutto, se si mette questo for dopo la chiamata di CPU0 allo scheduler, queste poi non partono mai)
+    ACQUIRE_LOCK(&global_lock); // global lock acquisition to prevent other the CPUs to execute the test code
+    lock_acquired_0 = 1; // lock acquired by CPU0
     for (int i = 1; i < NCPU; i++) {
         start_state.reg_sp = (0x20020000 + i * PAGESIZE);
-        INITCPU(i, &start_state); // TODO: non siamo convinti
+        INITCPU(i, &start_state);
     }
     klog_print("CPUs setting | ");
 
