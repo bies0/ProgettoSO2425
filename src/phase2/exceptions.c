@@ -1,4 +1,4 @@
-#include "globals.h"
+extern void interruptHandler();
 
 void exceptionHandler()
 {

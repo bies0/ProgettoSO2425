@@ -1,4 +1,8 @@
-#include "globals.h" // da' un warning, non siamo sicuri. Se lo togliamo dobbiamo dichiarare le variabili.
+extern int process_count;
+extern struct list_head ready_queue;
+extern struct pcb_t *current_process[NCPU];
+extern volatile unsigned int global_lock;
+extern int lock_acquired_0;
  
 void scheduler()
 {

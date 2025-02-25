@@ -14,8 +14,19 @@
 #include "./scheduler.c"
 
 // 1. Global variables declaration
-#define GLOBALS 1
-#include "globals.h"
+int process_count;
+struct list_head ready_queue;
+struct pcb_t *current_process[NCPU];
+struct semd_t device_semaphores[NRSEMAPHORES];
+volatile unsigned int global_lock;
+
+int lock_acquired_0; // lock acquired by CPU0
+
+extern void test();
+extern void scheduler();
+extern void exceptionHandler();
+extern void interruptHandler();
+// End declaration
 
 int main()
 {
