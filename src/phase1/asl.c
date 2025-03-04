@@ -66,8 +66,7 @@ int insertBlocked(int* semAdd, pcb_t* p) {
     ptr_list_head = list_next(&semdFree_h);
     list_del(ptr_list_head);
 
-    //list_add_tail(ptr_list_head, &semd_h);
-    add_to_semd(ptr_list_head, p);
+    add_to_semd(ptr_list_head, semAdd);
 
     ptr_sem = container_of(ptr_list_head, semd_t, s_link);
     ptr_sem->s_key = semAdd;
@@ -108,6 +107,10 @@ pcb_t* outBlocked(pcb_t* p) {
     list_for_each_entry(ptr_pcb, &ptr_sem->s_procq, p_list) {
         if (ptr_pcb == p) {
             list_del(&ptr_pcb->p_list);
+            if (emptyProcQ(&ptr_sem->s_procq)) {
+                list_del(&ptr_sem->s_link);
+                list_add(&ptr_sem->s_link, &semdFree_h);
+            }
             return ptr_pcb;
         }
     }
@@ -124,5 +127,5 @@ pcb_t* headBlocked(int* semAdd) {
     if (list_empty(&ptr_sem->s_procq)) {
         return NULL;
     }
-    return list_next(&ptr_sem->s_procq);
+    return headProcQ(&ptr_sem->s_procq);
 }
