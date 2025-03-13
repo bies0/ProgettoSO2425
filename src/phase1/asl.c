@@ -129,3 +129,32 @@ pcb_t* headBlocked(int* semAdd) {
     }
     return headProcQ(&ptr_sem->s_procq);
 }
+
+pcb_t* removeByPid(semd_t* ptr_sem, int pid) {
+    pcb_t* ptr_pcb;
+    list_for_each_entry(ptr_pcb, &ptr_sem->s_procq, p_list) {
+        if (ptr_pcb->p_pid == pid) {
+            list_del(&(ptr_pcb->p_list));
+            return ptr_pcb;
+        }
+    }
+    return NULL;
+} 
+
+// funzione che ci avevano assegnato per sbaglio nella fase 1
+// ma che poteva tornarci utile
+pcb_t* outBlockedPid(int pid) {
+    semd_t* ptr_sem;
+    pcb_t* ptr_pcb;
+    list_for_each_entry(ptr_sem, &semd_h, s_link) {
+        ptr_pcb = removeByPid(ptr_sem, pid);
+        if (ptr_pcb != NULL) {
+            if (emptyProcQ(&ptr_sem->s_procq)) {
+                list_del(&ptr_sem->s_link);
+                list_add(&ptr_sem->s_link, &semdFree_h);
+            }
+            return ptr_pcb;
+        }
+    }
+    return NULL;
+}

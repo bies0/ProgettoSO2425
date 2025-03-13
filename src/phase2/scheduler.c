@@ -3,6 +3,8 @@ extern struct list_head ready_queue;
 extern struct pcb_t *current_process[NCPU];
 extern volatile unsigned int global_lock;
 extern int lock_acquired_0;
+
+extern cpu_t current_process_start_time[NCPU];
  
 void scheduler()
 {
@@ -30,6 +32,11 @@ void scheduler()
         current_process[prid] = pcb;
         if (lock_acquired_0 && prid == 0)
             lock_acquired_0 = 0;
+
+        cpu_t current_time;
+        STCK(current_time);
+        current_process_start_time[prid] = current_time;
+
         RELEASE_LOCK(&global_lock);
         setTIMER(TIMESLICE);
         LDST(&(pcb->p_s));

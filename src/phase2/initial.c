@@ -26,6 +26,12 @@ extern void test();
 extern void scheduler();
 extern void exceptionHandler();
 extern void interruptHandler();
+
+// valori dei semafori
+int asl_pseudo_clock = 0;
+
+cpu_t current_process_start_time[NCPU];
+
 // End declaration
 
 int main()
