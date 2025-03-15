@@ -44,6 +44,14 @@ void createProcess(state_t *state, int prid, pcb_t* caller) {
 
     insertProcQ(&ready_queue, newProc);
     insertChild(caller, newProc);
+
+    // se non si riinizializza p_child dopo insertChild 
+    // da errore in terminateProcess
+    // quando si controlla se il pcb ha figli
+    // risulta che newProc non sia vuoto
+    // quando si cerca di terminare figli di figli il problema ritorna
+    INIT_LIST_HEAD(&(newProc->p_child));
+
     process_count++;
 
     RELEASE_LOCK(&global_lock);
