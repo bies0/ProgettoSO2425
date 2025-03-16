@@ -12,6 +12,7 @@
 #include "./exceptions.c"
 #include "./interrupts.c"
 #include "./scheduler.c"
+#include "./sysHandler.c"
 
 // 1. Global variables declaration
 int process_count;

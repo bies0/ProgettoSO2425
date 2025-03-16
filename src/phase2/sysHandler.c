@@ -151,18 +151,21 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
 }
 
 void passeren(state_t *state, int prid, pcb_t* caller) {
-    ACQUIRE_LOCK(&global_lock);
-    // The physical address of the semaphore to be P’ed in a1,
-    // and then executing the SYSCALL instruction.
     int *semaddr = (int*) state->gpr[25]; // semaphore address
-
     if (*semaddr == 0) {
+        ACQUIRE_LOCK(&global_lock);
         insertBlocked(semaddr, current_process[prid]); // insert in blocked list
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
     else if (*semaddr == 1) {
-        *semaddr = 0;
+        ACQUIRE_LOCK(&global_lock);
+        pcb_t* removed = removeBlocked(semaddr);
+        if (removed == NULL) {
+            *semaddr = 0;
+        } else {
+            insertProcQ(&ready_queue, removed);
+        }
         RELEASE_LOCK(&global_lock);
         restoreCurrentProcess(state);
     }
@@ -170,15 +173,23 @@ void passeren(state_t *state, int prid, pcb_t* caller) {
 
 void verhogen(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int *) state->gpr[25];
-    ACQUIRE_LOCK(&global_lock);
-    pcb_t *process = removeBlocked(semaddr);
-    if (process == NULL) {
-        *semaddr = 1;
-    } else {
-        insertProcQ(&ready_queue, process);
+    if (*semaddr == 1) {
+        ACQUIRE_LOCK(&global_lock);
+        insertBlocked(semaddr, current_process[prid]); // insert in blocked list
+        RELEASE_LOCK(&global_lock);
+        blocksys(state, prid, caller);
     }
-    RELEASE_LOCK(&global_lock);
-    restoreCurrentProcess(state);
+    else if (*semaddr == 0) {
+        ACQUIRE_LOCK(&global_lock);
+        pcb_t *removed = removeBlocked(semaddr);
+        if (removed == NULL) {
+            *semaddr = 1;
+        } else {
+            insertProcQ(&ready_queue, removed);
+        }
+        RELEASE_LOCK(&global_lock);
+        restoreCurrentProcess(state);
+    }
 }
 
 void doInputOutput(state_t *state, int prid, pcb_t* caller) {
