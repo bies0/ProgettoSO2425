@@ -8,7 +8,8 @@
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
-#include "./p2test.c"
+// #include "./p2test.c"
+#include "./p2testSyscall.c"
 #include "./exceptions.c"
 #include "./interrupts.c"
 #include "./scheduler.c"
