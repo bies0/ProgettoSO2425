@@ -1,5 +1,3 @@
-// TODO controllare errori nel file ASL.c (warning con i tipi)
-
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
@@ -8,8 +6,10 @@
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
+// TODO: poi mettere il test originale
 // #include "./p2test.c"
 #include "./p2testSyscall.c"
+
 #include "./exceptions.c"
 #include "./interrupts.c"
 #include "./scheduler.c"

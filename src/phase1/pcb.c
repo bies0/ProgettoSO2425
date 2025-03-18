@@ -110,47 +110,28 @@ int emptyChild(pcb_t* p)
   return (p != NULL && list_empty(&(p->p_child)));
 }
 
-void insertChild(pcb_t* prnt, pcb_t* p)
+void insertChild(pcb_t *prnt, pcb_t *p)
 {
-  if (prnt == NULL || p == NULL) return;
-  if (emptyChild(prnt)) {
-    INIT_LIST_HEAD(&(prnt->p_child));
-    INIT_LIST_HEAD(&(p->p_child));
-    INIT_LIST_HEAD(&(p->p_sib));
-    list_add_tail(&(p->p_child), &(prnt->p_child));
-  } else {
-    struct list_head *child_list = list_next(&(prnt->p_child));
-    pcb_t *child = container_of(child_list, pcb_t, p_child);
-    list_add_tail(&(p->p_sib), &(child->p_sib));
-  }
-  p->p_parent = prnt;
+    if (prnt == NULL || p == NULL) return;
+    p->p_parent = prnt;
+    if (emptyChild(prnt)) list_add(&(p->p_sib), &(prnt->p_child));
+    else list_add_tail(&(p->p_sib), &(prnt->p_child));
 }
 
-pcb_t* removeChild(pcb_t* p)
+pcb_t *removeChild(pcb_t *p)
 {
-  if (p == NULL || emptyChild(p)) return NULL;
-  pcb_t *first_child = container_of(list_next(&(p->p_child)), pcb_t, p_child);
-  if (!list_empty(&(first_child->p_sib))) {
-    //klog_print("Child has siblings > ");
-    pcb_t *first_sibling = container_of(list_next(&(first_child->p_sib)), pcb_t, p_sib);
-    list_add(&(first_sibling->p_child), &(p->p_child));
+    if (p == NULL || emptyChild(p)) return NULL;
+
+    pcb_t *first_child = container_of(list_next(&(p->p_child)), pcb_t, p_sib);
     list_del(&(first_child->p_sib));
-  }
-  list_del(&(first_child->p_child));
-  first_child->p_parent = NULL;
-  //klog_print("Child removed | ");
-  return first_child;
+    first_child->p_parent = NULL;
+    return first_child;
 }
 
-pcb_t* outChild(pcb_t* p)
+pcb_t *outChild(pcb_t *p)
 {
-  if(p == NULL || p->p_parent == NULL) return NULL;
-  
-  pcb_t* parent = p->p_parent;
-  if(&(p->p_child) == list_next(&(parent->p_child))) return removeChild(parent); 
-  else {
+    if (p == NULL || p->p_parent == NULL) return NULL;
     list_del(&(p->p_sib));
     p->p_parent = NULL;
     return p;
-  }
 }
