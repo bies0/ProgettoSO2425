@@ -8,10 +8,12 @@
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
-#include "./p2test.c"
+// #include "./p2test.c"
+#include "./p2testSyscall.c"
 #include "./exceptions.c"
 #include "./interrupts.c"
 #include "./scheduler.c"
+#include "./sysHandler.c"
 
 // 1. Global variables declaration
 int process_count;
@@ -26,6 +28,12 @@ extern void test();
 extern void scheduler();
 extern void exceptionHandler();
 extern void interruptHandler();
+
+// valori dei semafori
+int asl_pseudo_clock = 0;
+
+cpu_t current_process_start_time[NCPU];
+
 // End declaration
 
 int main()

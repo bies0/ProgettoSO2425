@@ -1,4 +1,5 @@
 extern void interruptHandler();
+extern void syscallHandler();
 
 void exceptionHandler()
 {
@@ -17,7 +18,7 @@ void exceptionHandler()
             // TODO: TLB exceptions
         } else if (exccode == 8 || exccode == 11) {
             klog_print("syscall exception | ");
-            // TODO: SYSCALL exceptions
+            syscallHandler(state);
         } else if ((exccode >= 0 && exccode <= 7) || exccode == 9 || exccode == 10 || (exccode >= 12 && exccode <= 23)) {
             klog_print("program trap exception | ");
             // TODO: Program trap exceptions
