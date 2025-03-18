@@ -114,16 +114,14 @@ void insertChild(pcb_t *prnt, pcb_t *p)
 {
     if (prnt == NULL || p == NULL) return;
     p->p_parent = prnt;
-    if (emptyChild(prnt)) list_add(&(p->p_sib), &(prnt->p_child));
-    else list_add_tail(&(p->p_sib), &(prnt->p_child));
+    list_add_tail(&(p->p_sib), &(prnt->p_child));
 }
 
 pcb_t *removeChild(pcb_t *p)
 {
     if (p == NULL || emptyChild(p)) return NULL;
-
     pcb_t *first_child = container_of(list_next(&(p->p_child)), pcb_t, p_sib);
-    list_del(&(first_child->p_sib));
+    list_del(list_next(&(p->p_child)));
     first_child->p_parent = NULL;
     return first_child;
 }
@@ -131,7 +129,13 @@ pcb_t *removeChild(pcb_t *p)
 pcb_t *outChild(pcb_t *p)
 {
     if (p == NULL || p->p_parent == NULL) return NULL;
-    list_del(&(p->p_sib));
-    p->p_parent = NULL;
-    return p;
+    struct list_head *iterator;
+    list_for_each(iterator, &(p->p_parent->p_child)) {
+        if (iterator == &p->p_sib) {
+            list_del(iterator);
+            p->p_parent = NULL;
+            return p;
+        }
+    }
+    return NULL;
 }
