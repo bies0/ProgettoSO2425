@@ -93,6 +93,19 @@ int findInCurrents(pcb_t* process) {
     return -1;
 }
 
+void callSchedulerOnProcessor(int prid) {
+    state_t start_state = {
+        .status = MSTATUS_MPP_M,
+        .pc_epc = (memaddr)scheduler,
+        .gpr = {0},
+        .entry_hi = 0,
+        .cause = 0,
+        .mie = 0
+    };
+    start_state.reg_sp = (0x20020000 + prid * PAGESIZE);
+    INITCPU(prid, &start_state);
+}
+
 void removePcb(pcb_t* process) {
     outChild(process);
     if (process->p_semAdd != NULL) {
