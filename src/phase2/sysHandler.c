@@ -3,6 +3,8 @@
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
 
+extern void scheduler();
+extern void exceptionHandler();
 extern volatile unsigned int global_lock;
 extern int process_count;
 extern struct list_head ready_queue;
@@ -114,41 +116,20 @@ void removePcb(pcb_t* process) {
     outProcQ(&ready_queue, process);
     int processor = findInCurrents(process);
     if (processor != -1) {
-        // chiama scheduler su processore
+        callSchedulerOnProcessor(processor);
     }
     freePcb(process);
-}
-
-pcb_t* nextPcbInTree(pcb_t* ptr_pcb) {
-    pcb_t* ptr_sibling = headProcQ(&ptr_pcb->p_sib);
-    if (ptr_sibling != NULL) {
-        return ptr_sibling;
-    } else {
-        return ptr_pcb->p_parent;
-    }
+    process_count--;
 }
 
 void killTree(pcb_t* root) {
-    pcb_t* ptr_pcb = root;
-    pcb_t* ptr_pcb_to_kill;
-    int has_no_child;
-    while (1) {
-        has_no_child = emptyChild(ptr_pcb);
-        if (has_no_child && ptr_pcb == root) {
-            removePcb(root);
-            process_count--;
-            return;
-        }
-        else if (has_no_child) {
-            ptr_pcb_to_kill = ptr_pcb;
-            ptr_pcb = nextPcbInTree(ptr_pcb);
-            removePcb(ptr_pcb_to_kill);
-            process_count--;
-        }
-        else if (!has_no_child) {
-            ptr_pcb = headProcQ(&ptr_pcb->p_child);
-        }
+    if (root == NULL) return;
+    outChild(root);
+    while (!emptyChild(root)) {
+        pcb_t* child = removeChild(root);
+        killTree(child);
     }
+    removePcb(root);
 }
 
 void terminateProcess(state_t *state, int prid, pcb_t* caller) {
@@ -163,12 +144,11 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     else {
         process = findProcessByPid(pid);
     }
-    if (process == NULL) ;
-    else {
+    if (process != NULL) {
         killTree(process);
     }
     RELEASE_LOCK(&global_lock);
-    if (killSelf) {
+    if (killSelf || findProcessByPid(caller->p_pid) != NULL) {
         scheduler();
     } else {
         restoreCurrentProcess(state);
@@ -263,14 +243,30 @@ void getProcessId(state_t *state, int prid, pcb_t* caller) {
     restoreCurrentProcess(state);
 }
 
+void passUp(int index, pcb_t* caller, state_t* state) {
+    if (caller->p_supportStruct == NULL) {
+        killTree(caller);
+        scheduler();
+    } else {
+        caller->p_s = *state;
+        caller->p_supportStruct->sup_exceptState[index] = *state;
+        context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
+        LDCXT(context->stackPtr, context->status, context->pc);
+    }
+}
+
 void syscallHandler(state_t *state) {
     int a0 = state->gpr[24];
     int prid = getPRID();
     pcb_t* caller = current_process[prid];
 
+    if (a0 > 0) {
+        passUp(GENERALEXCEPT, caller, state);
+    }
+
     if (state->cause & MSTATUS_MPP_MASK) {
         state->cause = PRIVINSTR;
-        // traphandler
+        exceptionHandler();
     }
 
     switch (a0) {
@@ -302,7 +298,8 @@ void syscallHandler(state_t *state) {
         getProcessId(state, prid, caller); 
         break;
     default:
-        // traphandler
+        state->cause = GENERALEXCEPT;
+        exceptionHandler();
         break;
     }
 }
