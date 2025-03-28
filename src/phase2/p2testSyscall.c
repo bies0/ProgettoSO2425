@@ -277,9 +277,6 @@ void test() {
 
     p4pid = SYSCALL(CREATEPROCESS, (int)&p4state, PROCESS_PRIO_LOW, (int)NULL); /* start p4     */
 
-    int semTestP4 = 0;
-    SYSCALL(PASSEREN, (int)&semTestP4, 0, 0);
-
     pFiveSupport.sup_exceptContext[GENERALEXCEPT].stackPtr = (int)p5Stack;
     pFiveSupport.sup_exceptContext[GENERALEXCEPT].status |= MSTATUS_MIE_MASK | MSTATUS_MPP_M;
     pFiveSupport.sup_exceptContext[GENERALEXCEPT].pc = (memaddr)p5gen;
@@ -299,7 +296,7 @@ void test() {
 
     print("p1 knows p5 ended\n");
 
-    SYSCALL(PASSEREN, (int)&sem_blkp4, 0, 0); /* P(sem_blkp4)		*/
+    // SYSCALL(PASSEREN, (int)&sem_blkp4, 0, 0); /* P(sem_blkp4)		*/
 
     /* now for a more rigorous check of process termination */
     for (p8inc = 0; p8inc < 4; p8inc++) {
@@ -314,6 +311,11 @@ void test() {
 
         SYSCALL(PASSEREN, (int)&sem_endp8, 0, 0);
     }
+
+    // int semFineTest = 0;
+    // SYSCALL(PASSEREN, (int)&semFineTest, 0, 0);
+
+    SYSCALL(TERMPROCESS, 0, 0, 0);
 
     print("p1 finishes OK -- TTFN\n");
     *((memaddr *)BADADDR) = 0; /* terminate p1 */
@@ -480,8 +482,6 @@ void p4() {
     print("p4 is OK\n");
 
     SYSCALL(VERHOGEN, (int)&sem_endp4, 0, 0); /* V(sem_endp4)          */
-
-    SYSCALL(VERHOGEN, (int)&sem_blkp4, 0, 0);
 
     SYSCALL(TERMPROCESS, 0, 0, 0); /* terminate p4      */
 

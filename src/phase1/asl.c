@@ -135,6 +135,7 @@ pcb_t* removeByPid(semd_t* ptr_sem, int pid) {
     list_for_each_entry(ptr_pcb, &ptr_sem->s_procq, p_list) {
         if (ptr_pcb->p_pid == pid) {
             list_del(&(ptr_pcb->p_list));
+            ptr_pcb->p_semAdd = NULL;
             return ptr_pcb;
         }
     }

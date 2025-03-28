@@ -3,6 +3,8 @@
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
 
+extern void scheduler();
+extern void exceptionHandler();
 extern volatile unsigned int global_lock;
 extern int process_count;
 extern struct list_head ready_queue;
@@ -45,13 +47,6 @@ void createProcess(state_t *state, int prid, pcb_t* caller) {
     insertProcQ(&ready_queue, newProc);
     insertChild(caller, newProc);
 
-    // se non si riinizializza p_child dopo insertChild 
-    // da errore in terminateProcess
-    // quando si controlla se il pcb ha figli
-    // risulta che newProc non sia vuoto
-    // quando si cerca di terminare figli di figli il problema ritorna
-    INIT_LIST_HEAD(&(newProc->p_child));
-
     process_count++;
 
     RELEASE_LOCK(&global_lock);
@@ -64,7 +59,7 @@ pcb_t* findProcessByPid(int pid) {
     int i = 0;
     // ricerca fra i processori
     while (i < NCPU) {
-        process = current_process[getPRID()];
+        process = current_process[i];
         if (process->p_pid == pid) {
             return process;
         }
@@ -86,44 +81,55 @@ pcb_t* findProcessByPid(int pid) {
     return process;
 }
 
+int findInCurrents(pcb_t* process) {
+    int prid = getPRID();
+    int i = 0;
+    pcb_t* current;
+    while (i < NCPU) {
+        current = current_process[i];
+        if (i != prid && process == current) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+void callSchedulerOnProcessor(int prid) {
+    state_t start_state = {
+        .status = MSTATUS_MPP_M,
+        .pc_epc = (memaddr)scheduler,
+        .gpr = {0},
+        .entry_hi = 0,
+        .cause = 0,
+        .mie = 0
+    };
+    start_state.reg_sp = (0x20020000 + prid * PAGESIZE);
+    INITCPU(prid, &start_state);
+}
+
 void removePcb(pcb_t* process) {
     outChild(process);
     if (process->p_semAdd != NULL) {
         outBlocked(process);
     }
-    freePcb(process);
-}
-
-pcb_t* nextPcbInTree(pcb_t* ptr_pcb) {
-    pcb_t* ptr_sibling = headProcQ(&ptr_pcb->p_sib);
-    if (ptr_sibling != NULL) {
-        return ptr_sibling;
-    } else {
-        return ptr_pcb->p_parent;
+    outProcQ(&ready_queue, process);
+    int processor = findInCurrents(process);
+    if (processor != -1) {
+        callSchedulerOnProcessor(processor);
     }
+    freePcb(process);
+    process_count--;
 }
 
 void killTree(pcb_t* root) {
-    pcb_t* ptr_pcb = root;
-    pcb_t* ptr_pcb_to_kill;
-    int has_no_child;
-    while (1) {
-        has_no_child = emptyChild(ptr_pcb);
-        if (has_no_child && ptr_pcb == root) {
-            outChild(root);
-            process_count--;
-            return;
-        }
-        else if (has_no_child) {
-            ptr_pcb_to_kill = ptr_pcb;
-            ptr_pcb = nextPcbInTree(ptr_pcb);
-            removePcb(ptr_pcb_to_kill);
-            process_count--;
-        }
-        else if (!has_no_child) {
-            ptr_pcb = headProcQ(&ptr_pcb->p_child);
-        }
+    if (root == NULL) return;
+    outChild(root);
+    while (!emptyChild(root)) {
+        pcb_t* child = removeChild(root);
+        killTree(child);
     }
+    removePcb(root);
 }
 
 void terminateProcess(state_t *state, int prid, pcb_t* caller) {
@@ -138,12 +144,11 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     else {
         process = findProcessByPid(pid);
     }
-    if (process == NULL) ;
-    else {
+    if (process != NULL) {
         killTree(process);
     }
     RELEASE_LOCK(&global_lock);
-    if (killSelf) {
+    if (killSelf || findProcessByPid(caller->p_pid) != NULL) {
         scheduler();
     } else {
         restoreCurrentProcess(state);
@@ -151,10 +156,10 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
 }
 
 void passeren(state_t *state, int prid, pcb_t* caller) {
-    int *semaddr = (int*) state->gpr[25]; // semaphore address
+    int *semaddr = (int*) state->gpr[25];
     if (*semaddr == 0) {
         ACQUIRE_LOCK(&global_lock);
-        insertBlocked(semaddr, current_process[prid]); // insert in blocked list
+        insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
@@ -175,7 +180,7 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int *) state->gpr[25];
     if (*semaddr == 1) {
         ACQUIRE_LOCK(&global_lock);
-        insertBlocked(semaddr, current_process[prid]); // insert in blocked list
+        insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
@@ -238,17 +243,32 @@ void getProcessId(state_t *state, int prid, pcb_t* caller) {
     restoreCurrentProcess(state);
 }
 
+void passUp(int index, pcb_t* caller, state_t* state) {
+    if (caller->p_supportStruct == NULL) {
+        killTree(caller);
+        scheduler();
+    } else {
+        caller->p_s = *state;
+        caller->p_supportStruct->sup_exceptState[index] = *state;
+        context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
+        LDCXT(context->stackPtr, context->status, context->pc);
+    }
+}
+
 void syscallHandler(state_t *state) {
     int a0 = state->gpr[24];
     int prid = getPRID();
     pcb_t* caller = current_process[prid];
 
-    if (state->cause & MSTATUS_MPP_MASK) {
-        state->cause = PRIVINSTR;
-        // traphandler
+    if (a0 > 0) {
+        passUp(GENERALEXCEPT, caller, state);
     }
 
-    // ACQUIRE_LOCK(&global_lock);
+    if (state->cause & MSTATUS_MPP_MASK) {
+        state->cause = PRIVINSTR;
+        exceptionHandler();
+    }
+
     switch (a0) {
     case -1:
         createProcess(state, prid, caller); 
@@ -278,8 +298,8 @@ void syscallHandler(state_t *state) {
         getProcessId(state, prid, caller); 
         break;
     default:
-        // traphandler
+        state->cause = GENERALEXCEPT;
+        exceptionHandler();
         break;
     }
-    // RELEASE_LOCK(&global_lock);
 }
