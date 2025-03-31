@@ -8,7 +8,7 @@ extern cpu_t current_process_start_time[NCPU];
  
 void scheduler()
 {
-    if (!lock_acquired_0 || getPRID() != 0)
+    if (getPRID() != 0 || !lock_acquired_0)
         ACQUIRE_LOCK(&global_lock);
 
     if (emptyProcQ(&ready_queue)) {

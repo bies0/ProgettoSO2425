@@ -6,9 +6,8 @@
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
-// TODO: poi mettere il test originale
-// #include "./p2test.c"
-#include "./p2testSyscall.c"
+#include "./p2test.c"
+//#include "./p2testSyscall.c"
 
 #include "./exceptions.c"
 #include "./interrupts.c"
@@ -29,12 +28,13 @@ extern void scheduler();
 extern void exceptionHandler();
 extern void interruptHandler();
 
-// valori dei semafori
-int asl_pseudo_clock = 0;
+// chiave dello pseudo clock, ma non sta dentro ai device semaphores? TODO
+#define PSEUDO_CLOCK_KEY 0
+int asl_pseudo_clock = PSEUDO_CLOCK_KEY;
 
 cpu_t current_process_start_time[NCPU];
 
-// End declaration
+// End of declaration
 
 int main()
 {
@@ -57,7 +57,7 @@ int main()
     process_count = 0;
     mkEmptyProcQ(&ready_queue);
     for (int i = 0; i < NCPU; i++) current_process[i] = NULL;
-    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = (semd_t){0};
+    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = (semd_t){0}; // TODO: dobbiamo fare altro?
     global_lock = 0;
 
     // 5. System-wide Interval Timer loading
@@ -82,7 +82,6 @@ int main()
     int cpu_counter = -1;
     for (int i = 0; i < IRT_NUM_ENTRY; i++) {
         if (i % IRT_NUM_ENTRY/NCPU == 0) cpu_counter++;
-        //*((memaddr *)(IRT_START + i)) = (IRT_START + i) | IRT_RP_BIT_ON; // funziona allo stesso modo?
         *((memaddr *)(IRT_START + i*WS)) |= IRT_RP_BIT_ON;
         *((memaddr *)(IRT_START + i*WS)) |= (1 << cpu_counter);
     }
