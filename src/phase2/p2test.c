@@ -109,7 +109,7 @@ extern void p5mm();
 
 /* a procedure to print on terminal 0 */
 void print(char *msg) {
-    klog_print(msg); // Stratagemma meschino
+    klog_print(msg); // TODO: togli
 
     char     *s       = msg;
     devregtr *base    = (devregtr *)(TERM0ADDR);
@@ -147,7 +147,6 @@ void uTLB_RefillHandler() {
 /*                 p1 -- the root process                            */
 /*                                                                   */
 void test() {
-    klog_print("Inizio test | ");
     SYSCALL(VERHOGEN, (int)&sem_testsem, 0, 0); /* V(sem_testsem)   */
 
     print("p1 v(sem_testsem)\n");

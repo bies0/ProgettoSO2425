@@ -10,7 +10,7 @@ extern int process_count;
 extern struct list_head ready_queue;
 extern struct pcb_t *current_process[NCPU];
 extern cpu_t current_process_start_time[NCPU];
-extern int asl_pseudo_clock;
+extern int device_semaphores[];
 
 
 cpu_t getTimeSlice(int prid) {
@@ -197,12 +197,18 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     }
 }
 
+// TODO
 void doInputOutput(state_t *state, int prid, pcb_t* caller) {
-    int* commandAddr = (int *) state->gpr[25];
-    int commandValue = (int) state->gpr[26];
+    int* commandAddr = (int *) state->reg_a1;
+    int commandValue = (int) state->reg_a2;
 
     ACQUIRE_LOCK(&global_lock);
     insertBlocked(commandAddr, caller);
+
+    int IntlineNo = ((memaddr)commandAddr / START_DEVREG) + 3;
+    klog_print("(intlineno: ");
+    klog_print_dec(IntlineNo);
+    klog_print(") ");
 
     state->pc_epc += 4;
     caller->p_s = *state;
@@ -221,7 +227,7 @@ void getCPUTime(state_t *state, int prid, pcb_t* caller) {
 
 void waitForClock(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
-    insertBlocked(&asl_pseudo_clock, caller);
+    insertBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]), caller);
     RELEASE_LOCK(&global_lock);
     blocksys(state, prid, caller);
 }

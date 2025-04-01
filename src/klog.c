@@ -40,10 +40,10 @@ void klog_print(char *str) {
 */
 void klog_print_dec(unsigned int num) {
     const char digits[] = "0123456789";
-    if(num < 10){
+    if(num >= 10){
         do {
             klog_buffer[klog_line_index][klog_char_index] = digits[num % 10];
-            num /= 10;
+            num /= 10;TERM0ADDR
             next_char();
         } while (num > 0);
     }else{

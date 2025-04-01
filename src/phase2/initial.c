@@ -18,7 +18,10 @@
 int process_count;
 struct list_head ready_queue;
 struct pcb_t *current_process[NCPU];
-struct semd_t device_semaphores[NRSEMAPHORES];
+
+int device_semaphores[NRSEMAPHORES+(DEVPERINT-1)]; // Aggiungiamo 7 indirizzi che non verranno usati per agevolarci l'accesso (TODO: commentare meglio, disegnino in './interrupts.c')
+const unsigned int PSEUDO_CLOCK_INDEX = 2*DEVPERINT;
+
 volatile unsigned int global_lock;
 
 int lock_acquired_0; // lock acquired by CPU0
@@ -27,10 +30,6 @@ extern void test();
 extern void scheduler();
 extern void exceptionHandler();
 extern void interruptHandler();
-
-// chiave dello pseudo clock, ma non sta dentro ai device semaphores? TODO
-#define PSEUDO_CLOCK_KEY 0
-int asl_pseudo_clock = PSEUDO_CLOCK_KEY;
 
 cpu_t current_process_start_time[NCPU];
 
@@ -57,7 +56,7 @@ int main()
     process_count = 0;
     mkEmptyProcQ(&ready_queue);
     for (int i = 0; i < NCPU; i++) current_process[i] = NULL;
-    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = (semd_t){0}; // TODO: dobbiamo fare altro?
+    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = 0;
     global_lock = 0;
 
     // 5. System-wide Interval Timer loading
