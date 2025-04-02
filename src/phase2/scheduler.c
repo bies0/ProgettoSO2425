@@ -2,14 +2,17 @@ extern int process_count;
 extern struct list_head ready_queue;
 extern struct pcb_t *current_process[NCPU];
 extern volatile unsigned int global_lock;
-extern int lock_acquired_0;
 
 extern cpu_t current_process_start_time[NCPU];
  
 void scheduler()
 {
-    if (getPRID() != 0 || !lock_acquired_0)
-        ACQUIRE_LOCK(&global_lock);
+    ACQUIRE_LOCK(&global_lock);
+    klog_print("`CPU ");
+    klog_print_dec(getPRID());
+    klog_print(" lock scheduler (");
+    klog_print_dec(global_lock);
+    klog_print(")` ");
 
     if (emptyProcQ(&ready_queue)) {
         if (process_count == 0) {
@@ -30,8 +33,6 @@ void scheduler()
         int prid = getPRID();
         pcb_t *pcb = removeProcQ(&ready_queue);    
         current_process[prid] = pcb;
-        if (lock_acquired_0 && prid == 0)
-            lock_acquired_0 = 0;
 
         cpu_t current_time;
         STCK(current_time);

@@ -43,7 +43,7 @@ void klog_print_dec(unsigned int num) {
     if(num >= 10){
         do {
             klog_buffer[klog_line_index][klog_char_index] = digits[num % 10];
-            num /= 10;TERM0ADDR
+            num /= 10;
             next_char();
         } while (num > 0);
     }else{

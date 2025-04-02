@@ -7,7 +7,7 @@
 #include "uriscv/cpu.h"
 
 #include "./p2test.c"
-//#include "./p2testSyscall.c"
+//#include "./p2testSyscall.c" // TODO togliere
 
 #include "./exceptions.c"
 #include "./interrupts.c"
@@ -23,8 +23,6 @@ int device_semaphores[NRSEMAPHORES+(DEVPERINT-1)]; // Aggiungiamo 7 indirizzi ch
 const unsigned int PSEUDO_CLOCK_INDEX = 2*DEVPERINT;
 
 volatile unsigned int global_lock;
-
-int lock_acquired_0; // lock acquired by CPU0
 
 extern void test();
 extern void scheduler();
@@ -95,8 +93,7 @@ int main()
         .cause = 0,
         .mie = 0
     };
-    ACQUIRE_LOCK(&global_lock); // global lock acquisition to prevent other the CPUs to execute the test code
-    lock_acquired_0 = 1; // lock acquired by CPU0
+
     for (int i = 1; i < NCPU; i++) {
         start_state.reg_sp = (0x20020000 + i * PAGESIZE);
         INITCPU(i, &start_state);

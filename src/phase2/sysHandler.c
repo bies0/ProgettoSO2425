@@ -34,6 +34,9 @@ void restoreCurrentProcess(state_t *state) {
 
 void createProcess(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
+    klog_print("lock createProcess (");
+    klog_print_dec(global_lock);
+    klog_print(") ");
     pcb_t *newProc = allocPcb();
     if (newProc == NULL) {
         state->gpr[24] = -1;
@@ -87,7 +90,8 @@ int findInCurrents(pcb_t* process) {
     pcb_t* current;
     while (i < NCPU) {
         current = current_process[i];
-        if (i != prid && process == current) {
+        // TODO stiamo provando
+        if (/*i != prid && */process == current) {
             return i;
         }
         i++;
@@ -117,6 +121,7 @@ void removePcb(pcb_t* process) {
     int processor = findInCurrents(process);
     if (processor != -1) {
         callSchedulerOnProcessor(processor);
+        current_process[processor] = NULL;
     }
     freePcb(process);
     process_count--;
@@ -134,9 +139,13 @@ void killTree(pcb_t* root) {
 
 void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     int pid = state->gpr[25];
-    pcb_t* process;
+    pcb_t* process = NULL;
     int killSelf = 0;
+
     ACQUIRE_LOCK(&global_lock);
+    klog_print("lock terminateProcess (");
+    klog_print_dec(global_lock);
+    klog_print(") ");
     if (pid == 0) {
         process = caller;
         killSelf = 1;
@@ -148,7 +157,7 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
         killTree(process);
     }
     RELEASE_LOCK(&global_lock);
-    if (killSelf || findProcessByPid(caller->p_pid) != NULL) {
+    if (killSelf || findProcessByPid(caller->p_pid) == NULL) {
         scheduler();
     } else {
         restoreCurrentProcess(state);
@@ -159,12 +168,18 @@ void passeren(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int*) state->gpr[25];
     if (*semaddr == 0) {
         ACQUIRE_LOCK(&global_lock);
+        klog_print("lock P=0 - (");
+        klog_print_dec(global_lock);
+        klog_print(") ");
         insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
     else if (*semaddr == 1) {
         ACQUIRE_LOCK(&global_lock);
+        klog_print("lock P=1 - (");
+        klog_print_dec(global_lock);
+        klog_print(") ");
         pcb_t* removed = removeBlocked(semaddr);
         if (removed == NULL) {
             *semaddr = 0;
@@ -180,12 +195,18 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int *) state->gpr[25];
     if (*semaddr == 1) {
         ACQUIRE_LOCK(&global_lock);
+        klog_print("lock V=1 - (");
+        klog_print_dec(global_lock);
+        klog_print(") ");
         insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
     else if (*semaddr == 0) {
         ACQUIRE_LOCK(&global_lock);
+        klog_print("lock V=0 - (");
+        klog_print_dec(global_lock);
+        klog_print(") ");
         pcb_t *removed = removeBlocked(semaddr);
         if (removed == NULL) {
             *semaddr = 1;
@@ -197,25 +218,34 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     }
 }
 
+// 00000000
+// 3
+
 // TODO
 void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     int* commandAddr = (int *) state->reg_a1;
     int commandValue = (int) state->reg_a2;
 
-    ACQUIRE_LOCK(&global_lock);
-    insertBlocked(commandAddr, caller);
 
-    int IntlineNo = ((memaddr)commandAddr / START_DEVREG) + 3;
-    klog_print("(intlineno: ");
-    klog_print_dec(IntlineNo);
+    //int IntlineNo = ((memaddr)commandAddr / START_DEVREG) + 3;
+    //insertBlocked(commandAddr, caller); // TODO: bloccare sul semaforo del device
+    //klog_print("(intlineno: ");
+    //klog_print_dec(IntlineNo);
+    //klog_print(") ");
+    //int DevNo = ...TODO;
+
+    ACQUIRE_LOCK(&global_lock);
+    klog_print("lock DOIO - (");
+    klog_print_dec(global_lock);
     klog_print(") ");
+    insertBlocked(&(device_semaphores[6*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
+    RELEASE_LOCK(&global_lock);
 
     state->pc_epc += 4;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
 
     *commandAddr = commandValue;
-    RELEASE_LOCK(&global_lock);
     scheduler();
 }
 
@@ -227,6 +257,9 @@ void getCPUTime(state_t *state, int prid, pcb_t* caller) {
 
 void waitForClock(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
+    klog_print("lock waitForClock (");
+    klog_print_dec(global_lock);
+    klog_print(") ");
     insertBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]), caller);
     RELEASE_LOCK(&global_lock);
     blocksys(state, prid, caller);
