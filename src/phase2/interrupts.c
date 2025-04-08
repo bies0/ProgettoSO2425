@@ -15,9 +15,9 @@ extern void print(char *msg); // presa dal test
 int getDevNo(int IntlineNo)
 {
     memaddr bitmap = *(memaddr *)(CDEV_BITMAP_BASE + (IntlineNo - 3) * WS);
-    klog_print("bitmap: ");
-    klog_print_dec(bitmap);
-    klog_print(" ");
+    //klog_print("bitmap: ");
+    //klog_print_dec(bitmap);
+    //klog_print(" ");
 
     // TODO: le specifiche dicono di usare uno switch, ma se ci sono piu' device accesi nello stesso momento, con lo switch va in default, mentre con l'if prende il device a piu' alta priorita' (0 -> 7)
     //switch (bitmap)
@@ -45,11 +45,6 @@ int getDevNo(int IntlineNo)
 
 void interruptHandler(int exccode)
 {
-    klog_print("interrupt handler: ");
-    klog_print("(exccode ");
-    klog_print_dec(exccode);
-    klog_print(") -> ");
-
     int IntlineNo, DevNo;
 
     switch (exccode)
@@ -64,13 +59,9 @@ void interruptHandler(int exccode)
         default: PANIC();
     }
 
-    klog_print("line ");
-    klog_print_dec(IntlineNo);
-    klog_print(" | ");
-
     // Our device_semaphores:
-    // -------- 1------- 12345678 12345678 12345678 12345678 12345678
-    // 1        2        3        4        5        6        7
+    // 12345678 | 12345678  | 12345678  | 12345678  | 12345678   | 12345678   | 1
+    // 0 - disk | 1 - flash | 2 - ether | 3 - print | 4 - term_o | 5 - term_i | pseudo-clock
 
     int prid = getPRID();
     if (exccode != IL_CPUTIMER && exccode != IL_TIMER) {
@@ -79,24 +70,29 @@ void interruptHandler(int exccode)
         klog_print_dec(DevNo);
         klog_print(" | ");
 
-        // TODO: modi alternativi, della macro non ci fidiamo
-        //memaddr devAddrBase = START_DEVREG + ((IntlineNo - 3) * 0x80) + (DevNo * 0x10);
-        //memaddr devAddrBase = DEV_REG_ADDR(IntlineNo, DevNo);
-
-        //devreg_t devreg = *(devreg_t *)devAddrBase;
-
-        devregarea_t devregarea = *(devregarea_t *)START_DEVREG;
-        devreg_t devreg = devregarea.devreg[IntlineNo-3][DevNo];
-        unsigned int status_code = IntlineNo == 7 ? devreg.term.recv_status : devreg.dtp.status;
-        if (IntlineNo == 7) devreg.term.recv_command = ACK;
-        else                devreg.dtp.command = ACK;
-        int *semaddr = &(device_semaphores[IntlineNo*8 + DevNo]); // get the right device semaphore
-        pcb_t *pcb = removeBlocked(semaddr); // V on the semaphore
+        memaddr devAddrBase = START_DEVREG + ((IntlineNo - 3) * 0x80) + (DevNo * 0x10);
+        unsigned int status_code;
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock int - device (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
+        devreg_t devreg = *(devreg_t *)devAddrBase;
+        if (IntlineNo == 7) {
+            klog_print("terminal | ");
+            // Check if the command is transmit or receive
+            if (devreg.term.transm_command == 0 || devreg.term.transm_command == ACK) {
+                status_code = devreg.term.recv_status;
+                devreg.term.recv_command = ACK; 
+                IntlineNo = 8; // Makes it easier to get the device semaphore
+            } else {
+                status_code = devreg.term.transm_status;
+                devreg.term.transm_command = ACK; 
+            }
+        } else {
+            status_code = devreg.dtp.status;
+            devreg.dtp.command = ACK;
+        }
+        int *semaddr = &(device_semaphores[(IntlineNo-3)*8 + DevNo]); // get the right device semaphore
+        pcb_t *pcb = removeBlocked(semaddr); // V on the semaphore
         if (pcb != NULL) {
+            klog_print(" pcbready | ");
             pcb->p_s.reg_a0 = status_code;
             insertProcQ(&ready_queue, pcb);
         }
@@ -105,11 +101,9 @@ void interruptHandler(int exccode)
         if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));
         else scheduler();
     } else if (exccode == IL_CPUTIMER) {
+        klog_print("cputimer | ");
         setTIMER(TIMESLICE); 
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock int - cpu timer (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
         pcb_t *current_pcb = current_process[prid];
         if (current_pcb != NULL) {
             current_pcb->p_s = *GET_EXCEPTION_STATE_PTR(prid);
@@ -119,25 +113,17 @@ void interruptHandler(int exccode)
         RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
-        klog_print("IntervalTimer interrupt | ");
+        klog_print("IntervalTimer | ");
         LDIT(PSECOND);
-        klog_print("ldit | ");
+        ACQUIRE_LOCK(&global_lock);
         while (headBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX])) != NULL) {
             pcb_t *pcb = removeBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]));
             insertProcQ(&ready_queue, pcb);
         }
-        klog_print("pcbs unblocked | ");
-
-        ACQUIRE_LOCK(&global_lock); // TODO: si blocca qui perche' l'altra cpu ha gia' richiesto il lock e sta aspettando
-        klog_print("lock int - int.timer (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
 
         int cpu_has_process = current_process[prid] != NULL;
         RELEASE_LOCK(&global_lock);
-        klog_print("return | ");
         if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));
         else scheduler();
     }
-
 }

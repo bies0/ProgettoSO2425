@@ -8,12 +8,6 @@ extern cpu_t current_process_start_time[NCPU];
 void scheduler()
 {
     ACQUIRE_LOCK(&global_lock);
-    klog_print("`CPU ");
-    klog_print_dec(getPRID());
-    klog_print(" lock scheduler (");
-    klog_print_dec(global_lock);
-    klog_print(")` ");
-
     if (emptyProcQ(&ready_queue)) {
         if (process_count == 0) {
             RELEASE_LOCK(&global_lock);
@@ -23,16 +17,17 @@ void scheduler()
             setMIE(MIE_ALL & ~MIE_MTIE_MASK);
             unsigned int status = getSTATUS();
             status |= MSTATUS_MIE_MASK;
-            setSTATUS(status);
-
             *((memaddr *)TPR) = 1;
             RELEASE_LOCK(&global_lock);
+            setSTATUS(status);
             WAIT();
         }
     } else {
         int prid = getPRID();
         pcb_t *pcb = removeProcQ(&ready_queue);    
         current_process[prid] = pcb;
+
+        *((memaddr *)TPR) = 0;
 
         cpu_t current_time;
         STCK(current_time);

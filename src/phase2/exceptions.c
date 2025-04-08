@@ -3,7 +3,7 @@ extern void syscallHandler();
 
 void exceptionHandler()
 {
-    klog_print("Exception handler -> ");
+    klog_print("Exception -> ");
     int prid = getPRID();
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
     int exccode = state->cause & CAUSE_EXCCODE_MASK;
@@ -13,7 +13,7 @@ void exceptionHandler()
         interruptHandler(exccode);
     } else {
         if (exccode >= 24 && exccode <= 28) {
-            klog_print("TLB exception: ");
+            klog_print("TLB: ");
             // TODO: TLB exceptions
         } else if (exccode == 8 || exccode == 11) {
             klog_print("syscall: ");
@@ -23,6 +23,4 @@ void exceptionHandler()
             // TODO: Program trap exceptions
         }
     }
-    // state->status & MSTATUS_MPP_MASK
-    // How to determine if in kernel or user mode:
 }

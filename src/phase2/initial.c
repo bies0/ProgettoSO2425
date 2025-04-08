@@ -19,8 +19,8 @@ int process_count;
 struct list_head ready_queue;
 struct pcb_t *current_process[NCPU];
 
-int device_semaphores[NRSEMAPHORES+(DEVPERINT-1)]; // Aggiungiamo 7 indirizzi che non verranno usati per agevolarci l'accesso (TODO: commentare meglio, disegnino in './interrupts.c')
-const unsigned int PSEUDO_CLOCK_INDEX = 2*DEVPERINT;
+int device_semaphores[NRSEMAPHORES];
+const unsigned int PSEUDO_CLOCK_INDEX = NRSEMAPHORES-1;
 
 volatile unsigned int global_lock;
 
@@ -73,7 +73,7 @@ int main()
 
     insertProcQ(&ready_queue, first_pcb);
     process_count++;
-    klog_print("first pcb | ");
+    //klog_print("first pcb | ");
 
     // 7. Interrupt routing
     int cpu_counter = -1;
@@ -98,10 +98,10 @@ int main()
         start_state.reg_sp = (0x20020000 + i * PAGESIZE);
         INITCPU(i, &start_state);
     }
-    klog_print("CPUs setting | ");
+    //klog_print("CPUs setting | ");
 
     // 9. Scheduler calling
-    klog_print("Scheduleeeeer | ");
+    //klog_print("Scheduleeeeer | ");
     scheduler();
 
     return 0;

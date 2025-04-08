@@ -11,6 +11,7 @@ extern struct list_head ready_queue;
 extern struct pcb_t *current_process[NCPU];
 extern cpu_t current_process_start_time[NCPU];
 extern int device_semaphores[];
+extern const unsigned int PSEUDO_CLOCK_INDEX;
 
 
 cpu_t getTimeSlice(int prid) {
@@ -34,9 +35,6 @@ void restoreCurrentProcess(state_t *state) {
 
 void createProcess(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
-    klog_print("lock createProcess (");
-    klog_print_dec(global_lock);
-    klog_print(") ");
     pcb_t *newProc = allocPcb();
     if (newProc == NULL) {
         state->gpr[24] = -1;
@@ -143,9 +141,6 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     int killSelf = 0;
 
     ACQUIRE_LOCK(&global_lock);
-    klog_print("lock terminateProcess (");
-    klog_print_dec(global_lock);
-    klog_print(") ");
     if (pid == 0) {
         process = caller;
         killSelf = 1;
@@ -168,18 +163,12 @@ void passeren(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int*) state->gpr[25];
     if (*semaddr == 0) {
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock P=0 - (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
         insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
     else if (*semaddr == 1) {
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock P=1 - (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
         pcb_t* removed = removeBlocked(semaddr);
         if (removed == NULL) {
             *semaddr = 0;
@@ -195,18 +184,12 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     int *semaddr = (int *) state->gpr[25];
     if (*semaddr == 1) {
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock V=1 - (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
         insertBlocked(semaddr, current_process[prid]);
         RELEASE_LOCK(&global_lock);
         blocksys(state, prid, caller);
     }
     else if (*semaddr == 0) {
         ACQUIRE_LOCK(&global_lock);
-        klog_print("lock V=0 - (");
-        klog_print_dec(global_lock);
-        klog_print(") ");
         pcb_t *removed = removeBlocked(semaddr);
         if (removed == NULL) {
             *semaddr = 1;
@@ -226,7 +209,6 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     int* commandAddr = (int *) state->reg_a1;
     int commandValue = (int) state->reg_a2;
 
-
     //int IntlineNo = ((memaddr)commandAddr / START_DEVREG) + 3;
     //insertBlocked(commandAddr, caller); // TODO: bloccare sul semaforo del device
     //klog_print("(intlineno: ");
@@ -235,15 +217,15 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     //int DevNo = ...TODO;
 
     ACQUIRE_LOCK(&global_lock);
-    klog_print("lock DOIO - (");
-    klog_print_dec(global_lock);
-    klog_print(") ");
-    insertBlocked(&(device_semaphores[6*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
+    klog_print("DOIO | ");
+    insertBlocked(&(device_semaphores[4*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
     RELEASE_LOCK(&global_lock);
 
+    // body of blocksys(), but here we need to set the commandAddr before calling the scheduler
     state->pc_epc += 4;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
+    ///
 
     *commandAddr = commandValue;
     scheduler();
@@ -257,9 +239,6 @@ void getCPUTime(state_t *state, int prid, pcb_t* caller) {
 
 void waitForClock(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
-    klog_print("lock waitForClock (");
-    klog_print_dec(global_lock);
-    klog_print(") ");
     insertBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]), caller);
     RELEASE_LOCK(&global_lock);
     blocksys(state, prid, caller);
@@ -303,7 +282,7 @@ void syscallHandler(state_t *state) {
         passUp(GENERALEXCEPT, caller, state);
     }
 
-    if (state->cause & MSTATUS_MPP_MASK) {
+    if (!(state->status & MSTATUS_MPP_MASK)) {
         state->cause = PRIVINSTR;
         exceptionHandler();
     }
