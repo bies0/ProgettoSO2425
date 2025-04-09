@@ -75,13 +75,15 @@ void interruptHandler(int exccode)
         ACQUIRE_LOCK(&global_lock);
         devreg_t devreg = *(devreg_t *)devAddrBase;
         if (IntlineNo == 7) {
-            klog_print("terminal | ");
+            klog_print("terminal (");
             // Check if the command is transmit or receive
             if (devreg.term.transm_command == 0 || devreg.term.transm_command == ACK) {
+                klog_print("input) | ");
                 status_code = devreg.term.recv_status;
                 devreg.term.recv_command = ACK; 
                 IntlineNo = 8; // Makes it easier to get the device semaphore
             } else {
+                klog_print("output) | ");
                 status_code = devreg.term.transm_status;
                 devreg.term.transm_command = ACK; 
             }
@@ -96,7 +98,9 @@ void interruptHandler(int exccode)
             pcb->p_s.reg_a0 = status_code;
             insertProcQ(&ready_queue, pcb);
         }
-        int cpu_has_process = current_process[prid] != NULL;
+        int cpu_has_process = (current_process[prid] != NULL);
+        if (cpu_has_process) klog_print("yes pcb | ");
+        else klog_print("no pcb | ");
         RELEASE_LOCK(&global_lock);
         if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));
         else scheduler();
@@ -116,11 +120,10 @@ void interruptHandler(int exccode)
         klog_print("IntervalTimer | ");
         LDIT(PSECOND);
         ACQUIRE_LOCK(&global_lock);
-        while (headBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX])) != NULL) {
-            pcb_t *pcb = removeBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]));
+        pcb_t *pcb = NULL;
+        while ((pcb = removeBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]))) != NULL) {
             insertProcQ(&ready_queue, pcb);
         }
-
         int cpu_has_process = current_process[prid] != NULL;
         RELEASE_LOCK(&global_lock);
         if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));

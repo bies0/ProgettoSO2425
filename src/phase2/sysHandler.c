@@ -25,6 +25,9 @@ void blocksys(state_t *state, int prid, pcb_t* caller){
     state->pc_epc += 4;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
+    ACQUIRE_LOCK(&global_lock);
+    current_process[prid] = NULL;
+    RELEASE_LOCK(&global_lock);
     scheduler();
 }
 
@@ -88,8 +91,7 @@ int findInCurrents(pcb_t* process) {
     pcb_t* current;
     while (i < NCPU) {
         current = current_process[i];
-        // TODO stiamo provando
-        if (/*i != prid && */process == current) {
+        if (i != prid && process == current) {
             return i;
         }
         i++;
@@ -219,13 +221,15 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
     klog_print("DOIO | ");
     insertBlocked(&(device_semaphores[4*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
-    RELEASE_LOCK(&global_lock);
 
     // body of blocksys(), but here we need to set the commandAddr before calling the scheduler
     state->pc_epc += 4;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
     ///
+
+    current_process[prid] = NULL;
+    RELEASE_LOCK(&global_lock);
 
     *commandAddr = commandValue;
     scheduler();
@@ -261,16 +265,23 @@ void getProcessId(state_t *state, int prid, pcb_t* caller) {
     restoreCurrentProcess(state);
 }
 
-void passUp(int index, pcb_t* caller, state_t* state) {
+void passUp(int index, state_t* state) {
+    pcb_t *caller = NULL;
+    ACQUIRE_LOCK(&global_lock);
+    caller = current_process[getPRID()];
+    RELEASE_LOCK(&global_lock);
+
     if (caller->p_supportStruct == NULL) {
+        ACQUIRE_LOCK(&global_lock);
         killTree(caller);
-        scheduler();
+        RELEASE_LOCK(&global_lock);
     } else {
-        caller->p_s = *state;
+        //caller->p_s = *state; // TODO: non c'era scritto, stiamo provando
         caller->p_supportStruct->sup_exceptState[index] = *state;
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
         LDCXT(context->stackPtr, context->status, context->pc);
     }
+    scheduler(); // TODO: non siamo sicuri che nel secondo caso vada chiamato lo scheduler, stiamo provando
 }
 
 void syscallHandler(state_t *state) {
@@ -279,7 +290,7 @@ void syscallHandler(state_t *state) {
     pcb_t* caller = current_process[prid];
 
     if (a0 > 0) {
-        passUp(GENERALEXCEPT, caller, state);
+        passUp(GENERALEXCEPT, state);
     }
 
     if (!(state->status & MSTATUS_MPP_MASK)) {
