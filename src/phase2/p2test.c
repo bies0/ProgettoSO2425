@@ -723,7 +723,8 @@ void p10() {
     SYSCALL(TERMPROCESS, ppid, 0, 0);
 
     print("Error: p10 didn't die with its parent!\n");
-    while(1) 
+
+    while(1) // TODO
         ;
     PANIC();
 }

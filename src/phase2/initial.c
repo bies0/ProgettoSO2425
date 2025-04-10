@@ -38,9 +38,9 @@ int main()
     for (int i = 0; i < NCPU; i++) {
         passupvector_t v = {
             .tlb_refill_handler  = (memaddr)uTLB_RefillHandler,
-            .tlb_refill_stackPtr = i == 0 ? KERNELSTACK : (0x20020000 + i*PAGESIZE),
+            .tlb_refill_stackPtr = i == 0 ? KERNELSTACK : (RAMSTART + (64 * PAGESIZE) + (i * PAGESIZE)),
             .exception_handler   = (memaddr)exceptionHandler,
-            .exception_stackPtr  = i == 0 ? KERNELSTACK : (0x20020000 + i*PAGESIZE)
+            .exception_stackPtr  = i == 0 ? KERNELSTACK : (0x20020000 + (i * PAGESIZE))
         };
         *((passupvector_t *)(PASSUPVECTOR + i*0x10)) = v;
     }
