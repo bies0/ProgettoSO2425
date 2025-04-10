@@ -59,7 +59,7 @@ void createProcess(state_t *state, int prid, pcb_t* caller) {
 }
 
 pcb_t* findProcessByPid(int pid) {
-    pcb_t* process;
+    pcb_t* process = NULL;
     int i = 0;
     // ricerca fra i processori
     while (i < NCPU) {
@@ -69,17 +69,26 @@ pcb_t* findProcessByPid(int pid) {
         }
         i++;
     }
+
+    process = NULL;
     // ricerca fra i processi ready
-    process = headProcQ(&ready_queue);
-    while (process != NULL) {
-        if (process->p_pid == pid) {
-            return process;
-        }
-        if (&process->p_list == &ready_queue) process = NULL;
-        else {
-            process = headProcQ(&process->p_list);
-        }   
+    list_for_each_entry(process, &ready_queue, p_list) {
+        if (process->p_pid == pid) return process;
     }
+
+    // TODO: vecchio codice, se funziona quello sopra, togli
+    //process = headProcQ(&ready_queue);
+    //while (process != NULL) {
+    //    if (process->p_pid == pid) {
+    //        return process;
+    //    }
+    //    if (&process->p_list == &ready_queue) process = NULL;
+    //    else {
+    //        process = headProcQ(&process->p_list);
+    //    }   
+    //}
+
+    process = NULL;
     // ricerca fra i semafori
     process = outBlockedPid(pid);
     return process;
@@ -127,8 +136,13 @@ void removePcb(pcb_t* process) {
     process_count--;
 }
 
+// TODO: probabilmente non funziona
 void killTree(pcb_t* root) {
     if (root == NULL) return;
+
+    klog_print(" killing ");
+    klog_print_dec(root->p_pid);
+
     outChild(root);
     while (!emptyChild(root)) {
         pcb_t* child = removeChild(root);
@@ -138,26 +152,42 @@ void killTree(pcb_t* root) {
 }
 
 void terminateProcess(state_t *state, int prid, pcb_t* caller) {
+    klog_print(" termProc | ");
     int pid = state->gpr[25];
     pcb_t* process = NULL;
-    int killSelf = 0;
 
     ACQUIRE_LOCK(&global_lock);
     if (pid == 0) {
-        process = caller;
-        killSelf = 1;
-    }
-    else {
-        process = findProcessByPid(pid);
-    }
-    if (process != NULL) {
-        killTree(process);
-    }
-    RELEASE_LOCK(&global_lock);
-    if (killSelf || findProcessByPid(caller->p_pid) == NULL) {
+        klog_print(" kill self (");
+        klog_print_dec(caller->p_pid);
+        klog_print(") | ");
+        killTree(caller);
+        RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
-        restoreCurrentProcess(state);
+        process = findProcessByPid(pid);
+        if (process == NULL) klog_print("- pid not found - ");
+        else { 
+            klog_print("- pid found: ");
+            klog_print_dec(pid);
+            klog_print(" - ");
+        }
+
+        if (process != NULL) {
+            killTree(process);
+            if (findProcessByPid(caller->p_pid) == NULL) {
+                klog_print("caller killed |");
+                RELEASE_LOCK(&global_lock);
+                scheduler();
+            } else { 
+                klog_print("continue on caller | ");
+                RELEASE_LOCK(&global_lock);
+                restoreCurrentProcess(state);
+            }
+        } else {
+            RELEASE_LOCK(&global_lock);
+            restoreCurrentProcess(state);
+        }
     }
 }
 
@@ -219,7 +249,7 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     //int DevNo = ...TODO;
 
     ACQUIRE_LOCK(&global_lock);
-    klog_print("DOIO | ");
+    //klog_print("DOIO | ");
     insertBlocked(&(device_semaphores[4*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
 
     // body of blocksys(), but here we need to set the commandAddr before calling the scheduler

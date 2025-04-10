@@ -27,7 +27,6 @@ volatile unsigned int global_lock;
 extern void test();
 extern void scheduler();
 extern void exceptionHandler();
-extern void interruptHandler();
 
 cpu_t current_process_start_time[NCPU];
 

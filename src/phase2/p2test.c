@@ -109,7 +109,7 @@ extern void p5mm();
 
 /* a procedure to print on terminal 0 */
 void print(char *msg) {
-    klog_print(msg); // TODO: togli
+    //klog_print(msg); // TODO: togli
 
     char     *s       = msg;
     devregtr *base    = (devregtr *)(TERM0ADDR);
@@ -402,7 +402,6 @@ void p3() {
     }
 
     print("p3 - CLOCKWAIT OK\n");
-    print("ciao caro\n");
 
     /* now let's check to see if we're really charge for CPU
        time correctly */
@@ -600,7 +599,6 @@ void p5b() {
 /*p6 -- high level syscall without initializing passup vector */
 void p6() {
     print("p6 starts\n");
-    print("stampami\n");
 
     SYSCALL(1, 0, 0, 0); /* should cause termination because p6 has no
            trap vector */
@@ -725,6 +723,8 @@ void p10() {
     SYSCALL(TERMPROCESS, ppid, 0, 0);
 
     print("Error: p10 didn't die with its parent!\n");
+    while(1) 
+        ;
     PANIC();
 }
 

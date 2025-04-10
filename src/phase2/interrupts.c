@@ -15,9 +15,9 @@ extern void print(char *msg); // presa dal test
 int getDevNo(int IntlineNo)
 {
     memaddr bitmap = *(memaddr *)(CDEV_BITMAP_BASE + (IntlineNo - 3) * WS);
-    //klog_print("bitmap: ");
-    //klog_print_dec(bitmap);
-    //klog_print(" ");
+    ////klog_print("bitmap: ");
+    ////klog_print_dec(bitmap);
+    ////klog_print(" ");
 
     // TODO: le specifiche dicono di usare uno switch, ma se ci sono piu' device accesi nello stesso momento, con lo switch va in default, mentre con l'if prende il device a piu' alta priorita' (0 -> 7)
     //switch (bitmap)
@@ -43,7 +43,7 @@ int getDevNo(int IntlineNo)
     else                      return -1; // just to remove the warning 'control reaches the end of non-void function', it should never go here
 }
 
-void interruptHandler(int exccode)
+void interruptHandler(state_t *state, int exccode)
 {
     int IntlineNo, DevNo;
 
@@ -66,24 +66,24 @@ void interruptHandler(int exccode)
     int prid = getPRID();
     if (exccode != IL_CPUTIMER && exccode != IL_TIMER) {
         DevNo = getDevNo(IntlineNo);
-        klog_print("device ");
-        klog_print_dec(DevNo);
-        klog_print(" | ");
+        //klog_print("device ");
+        //klog_print_dec(DevNo);
+        //klog_print(" | ");
 
         memaddr devAddrBase = START_DEVREG + ((IntlineNo - 3) * 0x80) + (DevNo * 0x10);
-        unsigned int status_code;
+        int status_code;
         ACQUIRE_LOCK(&global_lock);
         devreg_t devreg = *(devreg_t *)devAddrBase;
         if (IntlineNo == 7) {
-            klog_print("terminal (");
+            //klog_print("terminal (");
             // Check if the command is transmit or receive
             if (devreg.term.transm_command == 0 || devreg.term.transm_command == ACK) {
-                klog_print("input) | ");
+                //klog_print("input) | ");
                 status_code = devreg.term.recv_status;
                 devreg.term.recv_command = ACK; 
                 IntlineNo = 8; // Makes it easier to get the device semaphore
             } else {
-                klog_print("output) | ");
+                //klog_print("output) | ");
                 status_code = devreg.term.transm_status;
                 devreg.term.transm_command = ACK; 
             }
@@ -91,33 +91,38 @@ void interruptHandler(int exccode)
             status_code = devreg.dtp.status;
             devreg.dtp.command = ACK;
         }
+
+        //klog_print(" - status: ");
+        //klog_print_hex(status_code);
+        //klog_print(" - ");
+
         int *semaddr = &(device_semaphores[(IntlineNo-3)*8 + DevNo]); // get the right device semaphore
         pcb_t *pcb = removeBlocked(semaddr); // V on the semaphore
         if (pcb != NULL) {
-            klog_print(" pcbready | ");
+            //klog_print(" pcbready | ");
             pcb->p_s.reg_a0 = status_code;
             insertProcQ(&ready_queue, pcb);
         }
         int cpu_has_process = (current_process[prid] != NULL);
-        if (cpu_has_process) klog_print("yes pcb | ");
-        else klog_print("no pcb | ");
+        //if (cpu_has_process) klog_print("yes pcb | ");
+        //else klog_print("no pcb | ");
         RELEASE_LOCK(&global_lock);
-        if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));
+        if (cpu_has_process) LDST(state);
         else scheduler();
     } else if (exccode == IL_CPUTIMER) {
-        klog_print("cputimer | ");
+        //klog_print("cputimer | ");
         setTIMER(TIMESLICE); 
         ACQUIRE_LOCK(&global_lock);
         pcb_t *current_pcb = current_process[prid];
         if (current_pcb != NULL) {
-            current_pcb->p_s = *GET_EXCEPTION_STATE_PTR(prid);
+            current_pcb->p_s = *state;
             insertProcQ(&ready_queue, current_pcb);
             current_process[prid] = NULL;
         }
         RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
-        klog_print("IntervalTimer | ");
+        //klog_print("IntervalTimer | ");
         LDIT(PSECOND);
         ACQUIRE_LOCK(&global_lock);
         pcb_t *pcb = NULL;
@@ -126,7 +131,7 @@ void interruptHandler(int exccode)
         }
         int cpu_has_process = current_process[prid] != NULL;
         RELEASE_LOCK(&global_lock);
-        if (cpu_has_process) LDST(GET_EXCEPTION_STATE_PTR(prid));
+        if (cpu_has_process) LDST(state);
         else scheduler();
     }
 }
