@@ -61,7 +61,7 @@ void createProcess(state_t *state, int prid, pcb_t* caller) {
 pcb_t* findProcessByPid(int pid) {
     pcb_t* process = NULL;
     int i = 0;
-    // ricerca fra i processori
+    // search among CPUs
     while (i < NCPU) {
         process = current_process[i];
         if (process->p_pid == pid) {
@@ -71,7 +71,7 @@ pcb_t* findProcessByPid(int pid) {
     }
 
     process = NULL;
-    // ricerca fra i processi ready
+    // search in ready queue
     list_for_each_entry(process, &ready_queue, p_list) {
         if (process->p_pid == pid) return process;
     }
@@ -89,7 +89,7 @@ pcb_t* findProcessByPid(int pid) {
     //}
 
     process = NULL;
-    // ricerca fra i semafori
+    // search in semaphores
     process = outBlockedPid(pid);
     return process;
 }
@@ -122,41 +122,43 @@ void callSchedulerOnProcessor(int prid) {
 }
 
 void removePcb(pcb_t* process) {
-    outChild(process);
     if (process->p_semAdd != NULL) {
         outBlocked(process);
     }
+
     outProcQ(&ready_queue, process);
+
     int processor = findInCurrents(process);
     if (processor != -1) {
-        callSchedulerOnProcessor(processor);
         current_process[processor] = NULL;
+        callSchedulerOnProcessor(processor);
     }
     freePcb(process);
     process_count--;
 }
 
-// TODO: probabilmente non funziona
 void killTree(pcb_t* root) {
     if (root == NULL) return;
 
     klog_print(" killing ");
     klog_print_dec(root->p_pid);
+    klog_print(" | ");
 
     outChild(root);
     while (!emptyChild(root)) {
-        pcb_t* child = removeChild(root);
+        //pcb_t* child = removeChild(root);
+        pcb_t *child = headProcQ(&(root->p_child));
         killTree(child);
     }
     removePcb(root);
 }
 
 void terminateProcess(state_t *state, int prid, pcb_t* caller) {
-    klog_print(" termProc | ");
     int pid = state->gpr[25];
     pcb_t* process = NULL;
 
     ACQUIRE_LOCK(&global_lock);
+    klog_print(" termProc | ");
     if (pid == 0) {
         klog_print(" kill self (");
         klog_print_dec(caller->p_pid);
@@ -241,24 +243,27 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     int* commandAddr = (int *) state->reg_a1;
     int commandValue = (int) state->reg_a2;
 
-    //int IntlineNo = ((memaddr)commandAddr / START_DEVREG) + 3;
-    //insertBlocked(commandAddr, caller); // TODO: bloccare sul semaforo del device
+    int IntlineNo = 7;//((memaddr)commandAddr / START_DEVREG) + 3;
+    int DevNo = 0;//TODO;
+    if (*commandAddr >= 0x1000254) { // it's a terminal
+
+    } else {
+        memaddr devregbase = 0; // TODO: disegnello
+    }
     //klog_print("(intlineno: ");
     //klog_print_dec(IntlineNo);
     //klog_print(") ");
-    //int DevNo = ...TODO;
 
     ACQUIRE_LOCK(&global_lock);
-    //klog_print("DOIO | ");
-    insertBlocked(&(device_semaphores[4*8+0]), caller); // TODO: da cambiare, ora e' hardcoded
+    insertBlocked(&(device_semaphores[(IntlineNo-3)*DEVPERINT+DevNo]), caller); // TODO: da cambiare, ora e' hardcoded
 
     // body of blocksys(), but here we need to set the commandAddr before calling the scheduler
     state->pc_epc += 4;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
+    current_process[prid] = NULL;
     ///
 
-    current_process[prid] = NULL;
     RELEASE_LOCK(&global_lock);
 
     *commandAddr = commandValue;

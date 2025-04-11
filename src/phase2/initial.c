@@ -1,3 +1,5 @@
+// TODO: mettere NCPU a 8
+
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
