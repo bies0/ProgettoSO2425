@@ -76,13 +76,16 @@ int main()
     process_count++;
     //klog_print("first pcb | ");
 
-    // 7. Interrupt routing
+    // 7. Interrupt routing - TODO chiedere ai tutor
     int cpu_counter = -1;
     for (int i = 0; i < IRT_NUM_ENTRY; i++) {
         if (i % IRT_NUM_ENTRY/NCPU == 0) cpu_counter++;
-        *((memaddr *)(IRT_START + i*WS)) |= IRT_RP_BIT_ON;
-        *((memaddr *)(IRT_START + i*WS)) |= (1 << cpu_counter);
+        memaddr entry = IRT_START + i*WS; 
+        //*((memaddr *)entry) = 0; TODO: togli, non cambia niente
+        *((memaddr *)entry) |= IRT_RP_BIT_ON;
+        *((memaddr *)entry) |= (1 << cpu_counter);
     }
+
     *((memaddr *)TPR) = 0;
 
     // 8. CPUs state setting

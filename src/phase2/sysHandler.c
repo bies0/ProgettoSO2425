@@ -22,7 +22,7 @@ cpu_t getTimeSlice(int prid) {
 }
 
 void blocksys(state_t *state, int prid, pcb_t* caller){
-    state->pc_epc += 4;
+    state->pc_epc += WS;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
     ACQUIRE_LOCK(&global_lock);
@@ -32,7 +32,7 @@ void blocksys(state_t *state, int prid, pcb_t* caller){
 }
 
 void restoreCurrentProcess(state_t *state) {
-    state->pc_epc += 4;
+    state->pc_epc += WS;
     LDST(state);
 }
 
@@ -140,9 +140,9 @@ void removePcb(pcb_t* process) {
 void killTree(pcb_t* root) {
     if (root == NULL) return;
 
-    klog_print(" killing ");
-    klog_print_dec(root->p_pid);
-    klog_print(" | ");
+    //klog_print(" killing ");
+    //klog_print_dec(root->p_pid);
+    //klog_print(" | ");
 
     outChild(root);
     while (!emptyChild(root)) {
@@ -158,35 +158,37 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     pcb_t* process = NULL;
 
     ACQUIRE_LOCK(&global_lock);
-    klog_print(" termProc | ");
+    //klog_print(" termProc | ");
     if (pid == 0) {
-        klog_print(" kill self (");
-        klog_print_dec(caller->p_pid);
-        klog_print(") | ");
+        //klog_print(" kill self (");
+        //klog_print_dec(caller->p_pid);
+        //klog_print(") | ");
         killTree(caller);
+        //klog_print(" done | ");
         RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
         process = findProcessByPid(pid);
-        if (process == NULL) klog_print("- pid not found - ");
-        else { 
-            klog_print("- pid found: ");
-            klog_print_dec(pid);
-            klog_print(" - ");
-        }
+        //if (process == NULL) klog_print("- pid not found - ");
+        //else { 
+        //    klog_print("- pid found: ");
+        //    klog_print_dec(pid);
+        //    klog_print(" - ");
+        //}
 
         if (process != NULL) {
             killTree(process);
             if (findProcessByPid(caller->p_pid) == NULL) {
-                klog_print("caller killed |");
+                //klog_print("caller killed |");
                 RELEASE_LOCK(&global_lock);
                 scheduler();
             } else { 
-                klog_print("continue on caller | ");
+                //klog_print("continue on caller | ");
                 RELEASE_LOCK(&global_lock);
                 restoreCurrentProcess(state);
             }
         } else {
+            //klog_print(" done | ");
             RELEASE_LOCK(&global_lock);
             restoreCurrentProcess(state);
         }
@@ -235,30 +237,28 @@ void verhogen(state_t *state, int prid, pcb_t* caller) {
     }
 }
 
-// 00000000
-// 3
-
-// TODO
+#define INT_LINE_SIZE (DEVPERINT * DEVREGSIZE)
 void doInputOutput(state_t *state, int prid, pcb_t* caller) {
-    int* commandAddr = (int *) state->reg_a1;
+    memaddr commandAddr = state->reg_a1;
     int commandValue = (int) state->reg_a2;
 
-    int IntlineNo = 7;//((memaddr)commandAddr / START_DEVREG) + 3;
-    int DevNo = 0;//TODO;
-    if (*commandAddr >= 0x1000254) { // it's a terminal
+    memaddr IntLineBase = commandAddr - START_DEVREG;
+    int IntlineNo = (IntLineBase / INT_LINE_SIZE) + 3;
+    int DevNo = (IntLineBase - ((IntlineNo-3)*INT_LINE_SIZE)) / (DEVREGLEN * WS);
 
-    } else {
-        memaddr devregbase = 0; // TODO: disegnello
-    }
-    //klog_print("(intlineno: ");
+    if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == RECVCOMMAND)) // it's a terminal and in receive
+        IntlineNo = 8;
+    //klog_print("DOIO -> line: ");
     //klog_print_dec(IntlineNo);
-    //klog_print(") ");
+    //klog_print(", dev: ");
+    //klog_print_dec(DevNo);
+    //klog_print(" | ");
 
     ACQUIRE_LOCK(&global_lock);
-    insertBlocked(&(device_semaphores[(IntlineNo-3)*DEVPERINT+DevNo]), caller); // TODO: da cambiare, ora e' hardcoded
+    insertBlocked(&(device_semaphores[(IntlineNo-3)*DEVPERINT+DevNo]), caller);
 
     // body of blocksys(), but here we need to set the commandAddr before calling the scheduler
-    state->pc_epc += 4;
+    state->pc_epc += WS;
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
     current_process[prid] = NULL;
@@ -266,7 +266,7 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
 
     RELEASE_LOCK(&global_lock);
 
-    *commandAddr = commandValue;
+    *(memaddr *)commandAddr = commandValue;
     scheduler();
 }
 
@@ -316,7 +316,8 @@ void passUp(int index, state_t* state) {
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
         LDCXT(context->stackPtr, context->status, context->pc);
     }
-    scheduler(); // TODO: non siamo sicuri che nel secondo caso vada chiamato lo scheduler, stiamo provando
+    scheduler(); // TODO: non siamo sicuri che nel secondo caso vada chiamato lo scheduler, stiamo provando, forse va bene cosi'
+                 // da controllare quando il test andra' meglio
 }
 
 void syscallHandler(state_t *state) {

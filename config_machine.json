@@ -12,7 +12,7 @@
         }
     },
     "execution-rom": "/usr/local/share/uriscv/exec.rom.uriscv",
-    "num-processors": 1,
+    "num-processors": 8,
     "num-ram-frames": 256,
     "symbol-table": {
         "asid": 64,
