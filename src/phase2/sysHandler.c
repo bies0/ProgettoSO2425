@@ -76,18 +76,6 @@ pcb_t* findProcessByPid(int pid) {
         if (process->p_pid == pid) return process;
     }
 
-    // TODO: vecchio codice, se funziona quello sopra, togli
-    //process = headProcQ(&ready_queue);
-    //while (process != NULL) {
-    //    if (process->p_pid == pid) {
-    //        return process;
-    //    }
-    //    if (&process->p_list == &ready_queue) process = NULL;
-    //    else {
-    //        process = headProcQ(&process->p_list);
-    //    }   
-    //}
-
     process = NULL;
     // search in semaphores
     process = outBlockedPid(pid);
@@ -95,12 +83,11 @@ pcb_t* findProcessByPid(int pid) {
 }
 
 int findInCurrents(pcb_t* process) {
-    int prid = getPRID();
-    int i = 0;
-    pcb_t* current;
+    int i = -1;
+    pcb_t* current = NULL;
     while (i < NCPU) {
         current = current_process[i];
-        if (i != prid && process == current) {
+        if (process == current) {
             return i;
         }
         i++;
@@ -131,23 +118,20 @@ void removePcb(pcb_t* process) {
     int processor = findInCurrents(process);
     if (processor != -1) {
         current_process[processor] = NULL;
-        callSchedulerOnProcessor(processor);
+        if (processor != getPRID()) {
+            callSchedulerOnProcessor(processor); // TODO: che si fa?
+        }
     }
-    freePcb(process);
     process_count--;
+    freePcb(process);
 }
 
 void killTree(pcb_t* root) {
     if (root == NULL) return;
 
-    //klog_print(" killing ");
-    //klog_print_dec(root->p_pid);
-    //klog_print(" | ");
-
     outChild(root);
     while (!emptyChild(root)) {
-        //pcb_t* child = removeChild(root);
-        pcb_t *child = headProcQ(&(root->p_child));
+        pcb_t* child = removeChild(root);
         killTree(child);
     }
     removePcb(root);
@@ -158,37 +142,22 @@ void terminateProcess(state_t *state, int prid, pcb_t* caller) {
     pcb_t* process = NULL;
 
     ACQUIRE_LOCK(&global_lock);
-    //klog_print(" termProc | ");
     if (pid == 0) {
-        //klog_print(" kill self (");
-        //klog_print_dec(caller->p_pid);
-        //klog_print(") | ");
         killTree(caller);
-        //klog_print(" done | ");
         RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
         process = findProcessByPid(pid);
-        //if (process == NULL) klog_print("- pid not found - ");
-        //else { 
-        //    klog_print("- pid found: ");
-        //    klog_print_dec(pid);
-        //    klog_print(" - ");
-        //}
-
         if (process != NULL) {
             killTree(process);
             if (findProcessByPid(caller->p_pid) == NULL) {
-                //klog_print("caller killed |");
                 RELEASE_LOCK(&global_lock);
                 scheduler();
             } else { 
-                //klog_print("continue on caller | ");
                 RELEASE_LOCK(&global_lock);
                 restoreCurrentProcess(state);
             }
         } else {
-            //klog_print(" done | ");
             RELEASE_LOCK(&global_lock);
             restoreCurrentProcess(state);
         }
@@ -248,12 +217,6 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
 
     if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == RECVCOMMAND)) // it's a terminal and in receive
         IntlineNo = 8;
-    //klog_print("DOIO -> line: ");
-    //klog_print_dec(IntlineNo);
-    //klog_print(", dev: ");
-    //klog_print_dec(DevNo);
-    //klog_print(" | ");
-
     ACQUIRE_LOCK(&global_lock);
     insertBlocked(&(device_semaphores[(IntlineNo-3)*DEVPERINT+DevNo]), caller);
 
@@ -262,7 +225,7 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     caller->p_s = *state;
     caller->p_time += getTimeSlice(prid);
     current_process[prid] = NULL;
-    ///
+    // end of body of blocksys() ////
 
     RELEASE_LOCK(&global_lock);
 
@@ -278,6 +241,7 @@ void getCPUTime(state_t *state, int prid, pcb_t* caller) {
 
 void waitForClock(state_t *state, int prid, pcb_t* caller) {
     ACQUIRE_LOCK(&global_lock);
+    //klog_print(" in wait ");
     insertBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]), caller);
     RELEASE_LOCK(&global_lock);
     blocksys(state, prid, caller);
@@ -311,13 +275,11 @@ void passUp(int index, state_t* state) {
         killTree(caller);
         RELEASE_LOCK(&global_lock);
     } else {
-        //caller->p_s = *state; // TODO: non c'era scritto, stiamo provando
         caller->p_supportStruct->sup_exceptState[index] = *state;
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
         LDCXT(context->stackPtr, context->status, context->pc);
     }
-    scheduler(); // TODO: non siamo sicuri che nel secondo caso vada chiamato lo scheduler, stiamo provando, forse va bene cosi'
-                 // da controllare quando il test andra' meglio
+    scheduler();
 }
 
 void syscallHandler(state_t *state) {

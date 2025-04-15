@@ -109,7 +109,6 @@ extern void p5mm();
 
 /* a procedure to print on terminal 0 */
 void print(char *msg) {
-    //klog_print(msg); // TODO: togli
 
     char     *s       = msg;
     devregtr *base    = (devregtr *)(TERM0ADDR);
@@ -121,9 +120,6 @@ void print(char *msg) {
         devregtr value = PRINTCHR | (((devregtr)*s) << 8);
         status         = SYSCALL(DOIO, (int)command, (int)value, 0);
         if ((status & TERMSTATMASK) != RECVD) {
-            klog_print(" ~ ERROR in print ~"); // TODO: togli
-            while (1) 
-                ;
             PANIC();
         }
         s++;
@@ -150,7 +146,6 @@ void uTLB_RefillHandler() {
 /*                 p1 -- the root process                            */
 /*                                                                   */
 void test() {
-
     SYSCALL(VERHOGEN, (int)&sem_testsem, 0, 0); /* V(sem_testsem)   */
 
     print("p1 v(sem_testsem)\n");
@@ -724,9 +719,6 @@ void p10() {
     SYSCALL(TERMPROCESS, ppid, 0, 0);
 
     print("Error: p10 didn't die with its parent!\n");
-
-    while(1) // TODO
-        ;
     PANIC();
 }
 

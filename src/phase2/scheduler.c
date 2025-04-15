@@ -9,7 +9,7 @@ void scheduler()
 {
     ACQUIRE_LOCK(&global_lock);
     if (emptyProcQ(&ready_queue)) {
-        if (process_count == 0) {
+        if (process_count == 0) { // TODO: non entra mai qui perche' il process_count non va mai a 0 anche dopo la fine del test
             RELEASE_LOCK(&global_lock);
             HALT();
         } else {

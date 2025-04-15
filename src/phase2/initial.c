@@ -9,7 +9,6 @@
 #include "uriscv/cpu.h"
 
 #include "./p2test.c"
-//#include "./p2testSyscall.c" // TODO togliere
 
 #include "./exceptions.c"
 #include "./interrupts.c"
@@ -74,16 +73,26 @@ int main()
 
     insertProcQ(&ready_queue, first_pcb);
     process_count++;
-    //klog_print("first pcb | ");
 
-    // 7. Interrupt routing - TODO chiedere ai tutor
-    int cpu_counter = -1;
+    // 7. Interrupt routing - TODO: questo potrebbe essere il motivo per cui non tutte le CPU partono
+    //int cpu_counter = -1;
+    //for (int i = 0; i < IRT_NUM_ENTRY; i++) {
+    //    if (i % IRT_NUM_ENTRY/NCPU == 0) cpu_counter++;
+    //    memaddr entry = IRT_START + i*WS; 
+    //    *((memaddr *)entry) = 0; // just to be sure that the entry is 0 before initializing it
+    //    *((memaddr *)entry) |= IRT_RP_BIT_ON;
+    //    *((memaddr *)entry) |= (1 << cpu_counter);
+    //}
+
+    unsigned int bits = 0;
+    for (int cpu = 0; cpu < NCPU; cpu++)
+        bits += (1 << cpu);
+    //klog_print_hex(bits);
     for (int i = 0; i < IRT_NUM_ENTRY; i++) {
-        if (i % IRT_NUM_ENTRY/NCPU == 0) cpu_counter++;
         memaddr entry = IRT_START + i*WS; 
-        //*((memaddr *)entry) = 0; TODO: togli, non cambia niente
+        *((memaddr *)entry) = 0; // just to be sure that the entry is 0 before initializing it
         *((memaddr *)entry) |= IRT_RP_BIT_ON;
-        *((memaddr *)entry) |= (1 << cpu_counter);
+        *((memaddr *)entry) |= bits;
     }
 
     *((memaddr *)TPR) = 0;
@@ -102,10 +111,8 @@ int main()
         start_state.reg_sp = (0x20020000 + i * PAGESIZE);
         INITCPU(i, &start_state);
     }
-    //klog_print("CPUs setting | ");
 
     // 9. Scheduler calling
-    //klog_print("Scheduleeeeer | ");
     scheduler();
 
     return 0;

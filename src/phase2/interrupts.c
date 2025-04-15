@@ -6,7 +6,6 @@ extern struct pcb_t *current_process[NCPU];
 extern const unsigned int PSEUDO_CLOCK_INDEX;
 
 extern void scheduler();
-extern void print(char *msg); // presa dal test
 
 #define TERMSTATMASK 0xFF
 #define TRANSMITTED 5
@@ -16,9 +15,6 @@ extern void print(char *msg); // presa dal test
 int getDevNo(int IntlineNo)
 {
     memaddr bitmap = BITMAP(IntlineNo);
-
-    //klog_print_hex(bitmap);
-    //klog_print(" ");
 
     if      (bitmap & DEV0ON) return 0;
     else if (bitmap & DEV1ON) return 1;
@@ -49,7 +45,7 @@ int getDeviceOn(int DevNo)
 
 void interruptHandler(state_t *state, int exccode)
 {
-    int IntlineNo, DevNo;
+    int IntlineNo = 0;
 
     switch (exccode)
     {
@@ -69,56 +65,40 @@ void interruptHandler(state_t *state, int exccode)
 
     int prid = getPRID();
     if (exccode != IL_CPUTIMER && exccode != IL_TIMER) {
-        DevNo = getDevNo(IntlineNo);
-        //klog_print("device ");
-        //klog_print_dec(DevNo);
-        //klog_print(" -> ");
+        int DevNo = getDevNo(IntlineNo);
 
         memaddr devAddrBase = START_DEVREG + ((IntlineNo - 3) * 0x80) + (DevNo * 0x10);
         int status_code;
         ACQUIRE_LOCK(&global_lock);
-        devreg_t devreg = *(devreg_t *)devAddrBase;
+        devreg_t *devreg = (devreg_t *)devAddrBase;
         if (IntlineNo == 7) {
-            //klog_print("terminal: ");
             // Check if the command is transmit or receive
-            status_code = devreg.term.transm_status;
+            status_code = devreg->term.transm_status;
             if ((status_code & TERMSTATMASK) == TRANSMITTED) {
-                //klog_print("output | ");
-                devreg.term.transm_command = ACK; 
-                if ((devreg.term.recv_status & TERMSTATMASK) != RECEIVED) { 
-                    //*(memaddr *)BITMAP(7) &= (~getDeviceOn(DevNo)); // TODO: dobbiamo settare il bit del device nella bitmap a 0?
-                }
+                devreg->term.transm_command = ACK; 
             } else {
-                //klog_print("input | ");
                 IntlineNo = 8; // Makes it easier to get the device semaphore
-                status_code = devreg.term.recv_status;
-                devreg.term.recv_command = ACK; 
-                //*(memaddr *)BITMAP(7) &= (~getDeviceOn(DevNo)); 
+                status_code = devreg->term.recv_status;
+                devreg->term.recv_command = ACK; 
             }
         } else {
-            //klog_print("other | ");
-            status_code = devreg.dtp.status;
-            devreg.dtp.command = ACK;
-            //*(memaddr *)BITMAP(IntlineNo) &= (~getDeviceOn(DevNo)); 
+            status_code = devreg->dtp.status;
+            devreg->dtp.command = ACK;
         }
 
         int *semaddr = &(device_semaphores[(IntlineNo-3)*8 + DevNo]); // get the right device semaphore
         pcb_t *pcb = removeBlocked(semaddr); // V on the semaphore
         if (pcb != NULL) {
-            //klog_print(" pcbready | ");
             pcb->p_s.reg_a0 = status_code;
             insertProcQ(&ready_queue, pcb);
         } else {
-            //klog_print("ERROR: no pcb blocked | ");
+            //klog_print(" | ERROR: no device blocked | ");
         }
         int cpu_has_process = (current_process[prid] != NULL);
-        //if (cpu_has_process) klog_print("yes pcb | ");
-        //else klog_print("no pcb | ");
         RELEASE_LOCK(&global_lock);
         if (cpu_has_process) LDST(state);
         else scheduler();
     } else if (exccode == IL_CPUTIMER) {
-        //klog_print("cputimer | ");
         setTIMER(TIMESLICE); 
         ACQUIRE_LOCK(&global_lock);
         pcb_t *current_pcb = current_process[prid];
@@ -130,9 +110,9 @@ void interruptHandler(state_t *state, int exccode)
         RELEASE_LOCK(&global_lock);
         scheduler();
     } else {
-        //klog_print("IntervalTimer | ");
         LDIT(PSECOND);
         ACQUIRE_LOCK(&global_lock);
+        //klog_print(" | PSEUDO CLOCK | ");
         pcb_t *pcb = NULL;
         while ((pcb = removeBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]))) != NULL) {
             insertProcQ(&ready_queue, pcb);
@@ -140,10 +120,8 @@ void interruptHandler(state_t *state, int exccode)
         int cpu_has_process = current_process[prid] != NULL;
         RELEASE_LOCK(&global_lock);
         if (cpu_has_process) {
-            //klog_print("has process | ");
             LDST(state);
         } else {
-            //klog_print("no process | ");
             scheduler();
         }
     }
