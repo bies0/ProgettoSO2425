@@ -216,7 +216,7 @@
 #define NRSEMAPHORES 49         /* Numero semafori devices + pseudo clock */
 #define NSUPPSEM 48 		/* Numero di semafori devices per il livello di supporto */
 
-#define NCPU 8 /* Numero di processori attivi TODOOOOOOOO!!! */
+#define NCPU 8 /* Numero di processori attivi */
 
 #define DISKBACK     1
 #define FLASHBACK    0

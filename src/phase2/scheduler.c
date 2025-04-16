@@ -9,7 +9,7 @@ void scheduler()
 {
     ACQUIRE_LOCK(&global_lock);
     if (emptyProcQ(&ready_queue)) {
-        if (process_count == 0) { // TODO: non entra mai qui perche' il process_count non va mai a 0 anche dopo la fine del test
+        if (process_count == 0) {
             RELEASE_LOCK(&global_lock);
             HALT();
         } else {
@@ -19,7 +19,7 @@ void scheduler()
             status |= MSTATUS_MIE_MASK;
             *((memaddr *)TPR) = 1;
             RELEASE_LOCK(&global_lock);
-            setSTATUS(status);
+            setSTATUS(status); // after RELEASE_LOCK because otherwise it never releases the global lock
             WAIT();
         }
     } else {
@@ -29,6 +29,7 @@ void scheduler()
 
         *((memaddr *)TPR) = 0;
 
+        // setting of TOD on prid index of current_process_start_time
         cpu_t current_time;
         STCK(current_time);
         current_process_start_time[prid] = current_time;

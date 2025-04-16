@@ -1,9 +1,6 @@
-// TODO: mettere NCPU a 8
-
 #include "../phase1/headers/pcb.h"
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
-#include "../klog.c"
 
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
@@ -20,6 +17,9 @@ int process_count;
 struct list_head ready_queue;
 struct pcb_t *current_process[NCPU];
 
+// Our device_semaphores:
+// DevNo:     01234567 | 01234567  | 01234567  | 01234567  | 01234567   | 01234567   | 0
+// intLineNo: 0 - disk | 1 - flash | 2 - ether | 3 - print | 4 - term_o | 5 - term_i | pseudo-clock
 int device_semaphores[NRSEMAPHORES];
 const unsigned int PSEUDO_CLOCK_INDEX = NRSEMAPHORES-1;
 
@@ -29,7 +29,7 @@ extern void test();
 extern void scheduler();
 extern void exceptionHandler();
 
-cpu_t current_process_start_time[NCPU];
+cpu_t current_process_start_time[NCPU]; // for each CPU it keeps the TOD of the last process that transitioned from ready to running on that CPU 
 
 // End of declaration
 
@@ -74,20 +74,10 @@ int main()
     insertProcQ(&ready_queue, first_pcb);
     process_count++;
 
-    // 7. Interrupt routing - TODO: questo potrebbe essere il motivo per cui non tutte le CPU partono
-    //int cpu_counter = -1;
-    //for (int i = 0; i < IRT_NUM_ENTRY; i++) {
-    //    if (i % IRT_NUM_ENTRY/NCPU == 0) cpu_counter++;
-    //    memaddr entry = IRT_START + i*WS; 
-    //    *((memaddr *)entry) = 0; // just to be sure that the entry is 0 before initializing it
-    //    *((memaddr *)entry) |= IRT_RP_BIT_ON;
-    //    *((memaddr *)entry) |= (1 << cpu_counter);
-    //}
-
+    // 7. Interrupt routing - each IRT entry has the RP bit and the first 8 least significative bits set to 1
     unsigned int bits = 0;
     for (int cpu = 0; cpu < NCPU; cpu++)
         bits += (1 << cpu);
-    //klog_print_hex(bits);
     for (int i = 0; i < IRT_NUM_ENTRY; i++) {
         memaddr entry = IRT_START + i*WS; 
         *((memaddr *)entry) = 0; // just to be sure that the entry is 0 before initializing it

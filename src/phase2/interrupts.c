@@ -59,10 +59,6 @@ void interruptHandler(state_t *state, int exccode)
         default: PANIC();
     }
 
-    // Our device_semaphores:
-    // 12345678 | 12345678  | 12345678  | 12345678  | 12345678   | 12345678   | 1
-    // 0 - disk | 1 - flash | 2 - ether | 3 - print | 4 - term_o | 5 - term_i | pseudo-clock
-
     int prid = getPRID();
     if (exccode != IL_CPUTIMER && exccode != IL_TIMER) {
         int DevNo = getDevNo(IntlineNo);
@@ -87,12 +83,10 @@ void interruptHandler(state_t *state, int exccode)
         }
 
         int *semaddr = &(device_semaphores[(IntlineNo-3)*8 + DevNo]); // get the right device semaphore
-        pcb_t *pcb = removeBlocked(semaddr); // V on the semaphore
-        if (pcb != NULL) {
+        pcb_t *pcb = removeBlocked(semaddr); // V on the device semaphore
+        if (pcb != NULL) { // there was actually a pcb blocked on the device semaphore
             pcb->p_s.reg_a0 = status_code;
             insertProcQ(&ready_queue, pcb);
-        } else {
-            //klog_print(" | ERROR: no device blocked | ");
         }
         int cpu_has_process = (current_process[prid] != NULL);
         RELEASE_LOCK(&global_lock);
@@ -112,7 +106,6 @@ void interruptHandler(state_t *state, int exccode)
     } else {
         LDIT(PSECOND);
         ACQUIRE_LOCK(&global_lock);
-        //klog_print(" | PSEUDO CLOCK | ");
         pcb_t *pcb = NULL;
         while ((pcb = removeBlocked(&(device_semaphores[PSEUDO_CLOCK_INDEX]))) != NULL) {
             insertProcQ(&ready_queue, pcb);
