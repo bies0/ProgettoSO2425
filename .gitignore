@@ -2,5 +2,8 @@
 *.out
 *~
 /src/build/
+/src/phase1/build/
+/src/phase2/build/
+/src/phase3/build/
 *.uriscv
 .vscode

@@ -5,7 +5,8 @@
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
-#include "./p2test.c"
+#include "./p2test.c" // Phase 2 test
+#include "../phase3/p3test.c" // Phase 3 test
 
 #include "./exceptions.c"
 #include "./interrupts.c"
@@ -25,7 +26,8 @@ const unsigned int PSEUDO_CLOCK_INDEX = NRSEMAPHORES-1;
 
 volatile unsigned int global_lock;
 
-extern void test();
+extern void test(); // Phase 2 test entry point
+extern void p3test(); // Phase 3 test entry point
 extern void scheduler();
 extern void exceptionHandler();
 
@@ -64,7 +66,7 @@ int main()
     pcb_t *first_pcb = allocPcb();
 
     first_pcb->p_s = (state_t){
-        .pc_epc = (memaddr)test,
+        .pc_epc = (memaddr)p3test, // Currently testing phase 3 (TODO)
         .mie = MIE_ALL,
         .status = MSTATUS_MIE_MASK | MSTATUS_MPP_M,
     }; 
