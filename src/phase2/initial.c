@@ -67,8 +67,9 @@ int main()
 
     first_pcb->p_s = (state_t){
         .pc_epc = (memaddr)p3test, // Currently testing phase 3 (TODO)
+        //.pc_epc = (memaddr)test, // Currently testing phase 2
         .mie = MIE_ALL,
-        .status = MSTATUS_MIE_MASK | MSTATUS_MPP_M,
+        .status = MSTATUS_MPIE_MASK | MSTATUS_MPP_M,
     }; 
     RAMTOP(first_pcb->p_s.reg_sp);
     // Process tree fields, p_time, p_semAdd and p_supportStruct are already set to NULL/initialized by allocPcb()

@@ -10,6 +10,11 @@ void scheduler()
     ACQUIRE_LOCK(&global_lock);
     if (emptyProcQ(&ready_queue)) {
         if (process_count == 0) {
+            unsigned int *irt_entry = (unsigned int*) IRT_START;
+            for (int i = 0; i < IRT_NUM_ENTRY; i++) {
+                *irt_entry = getPRID();
+                irt_entry++;
+            }
             RELEASE_LOCK(&global_lock);
             HALT();
         } else {

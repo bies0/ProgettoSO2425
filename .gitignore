@@ -5,5 +5,7 @@
 /src/phase1/build/
 /src/phase2/build/
 /src/phase3/build/
+/src/*/build/*
+/src/*/build/
 *.uriscv
 .vscode
