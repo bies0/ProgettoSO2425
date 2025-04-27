@@ -1,4 +1,0 @@
-/home/mathieu/Uni/2ºAnno/SistemiOperativi/progetto/src/phase3/build/CMakeFiles/MultiPandOS.dir
-/home/mathieu/Uni/2ºAnno/SistemiOperativi/progetto/src/phase3/build/CMakeFiles/MultiPandOSuRISCV.dir
-/home/mathieu/Uni/2ºAnno/SistemiOperativi/progetto/src/phase3/build/CMakeFiles/edit_cache.dir
-/home/mathieu/Uni/2ºAnno/SistemiOperativi/progetto/src/phase3/build/CMakeFiles/rebuild_cache.dir
