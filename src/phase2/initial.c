@@ -6,7 +6,7 @@
 #include "uriscv/cpu.h"
 
 #include "./p2test.c" // Phase 2 test
-#include "../phase3/p3test.c" // Phase 3 test
+#include "../phase3/initProc.c" // Phase 3 test
 
 #include "./exceptions.c"
 #include "./interrupts.c"
@@ -56,7 +56,7 @@ int main()
     process_count = 0;
     mkEmptyProcQ(&ready_queue);
     for (int i = 0; i < NCPU; i++) current_process[i] = NULL;
-    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = 0;
+    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = 1;
     global_lock = 0;
 
     // 5. System-wide Interval Timer loading
