@@ -4,7 +4,8 @@
 
 #include "h/tconst.h"
 #include "h/print.h"
-
+#include "../../headers/const.h"
+#include "../globals.h"
 
 int fib (int i) {
 	if ((i == 1) || (i ==2))
@@ -29,6 +30,7 @@ void main() {
 	else
 		print(WRITETERMINAL, "ERROR: Recursion problems\n");
 		
+    SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
 	/* Terminate normally */	
 	SYSCALL(TERMINATE, 0, 0, 0);
 }

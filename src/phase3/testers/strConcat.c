@@ -5,7 +5,8 @@
 
 #include "h/tconst.h"
 #include "h/print.h"
-
+#include "../../headers/const.h"
+#include "../globals.h"
 
 void main() {
 	int status, status2, i;
@@ -42,7 +43,7 @@ void main() {
 	
 	print(WRITETERMINAL, "\n\nStrcat concluded\n");
 
-		
+	SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
 	/* Terminate normally */	
 	SYSCALL(TERMINATE, 0, 0, 0);
 }

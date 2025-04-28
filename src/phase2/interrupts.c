@@ -93,7 +93,7 @@ void interruptHandler(state_t *state, int exccode)
         if (cpu_has_process) LDST(state);
         else scheduler();
     } else if (exccode == IL_CPUTIMER) {
-        setTIMER(TIMESLICE); 
+        setTIMER(TIMESLICE * (*(cpu_t *)TIMESCALEADDR)); 
         ACQUIRE_LOCK(&global_lock);
         pcb_t *current_pcb = current_process[prid];
         if (current_pcb != NULL) {

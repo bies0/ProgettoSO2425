@@ -40,7 +40,7 @@ void scheduler()
         current_process_start_time[prid] = current_time;
 
         RELEASE_LOCK(&global_lock);
-        setTIMER(TIMESLICE);
+        setTIMER(TIMESLICE * (*(cpu_t *)TIMESCALEADDR));
         LDST(&(pcb->p_s));
     }
 }
