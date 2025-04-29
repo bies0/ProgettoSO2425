@@ -1,8 +1,3 @@
-// 2.1: table initialization ?
-// 2.2: backing store (already done within the Makefile)
-
-// TODO: mettere il masterSemaphore in tutti i testers
-
 #include "globals.h"
 #include "vmSupport.c"
 #include "sysSupport.c"
@@ -17,7 +12,7 @@ swap_t *swapPoolTable;
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM];
 
-#define UPROCS 1 // UPROCMAX // TODO: cambia
+#define UPROCS UPROCMAX // TODO: metti a UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
@@ -39,13 +34,18 @@ void p3test()
     }
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
-    masterSemaphore = 0; // TODO: chiedere ai tutor se va bene averlo messo nel file `globals.h`
+    masterSemaphore = 0; // TODO (non davvero cosi' utile): chiedere ai tutor se va bene averlo messo nel file `globals.h`
 
     print("Data Structures have been successfully initialized\n");
 
     // U-Procs Initialization: TODO (5.1) (read the flash and get the information (with DOIO), come si fa?)
     for (int i = 0; i < UPROCS; i++) {
         int ASID = i+1;
+
+        print("Initializing UPROC ");
+        for (int n = 0; n < ASID; n++) print("|");
+        print("\n");
+
         // States Initialization
         uprocsStates[i] = (state_t){
             .pc_epc = UPROCSTARTADDR,
@@ -54,7 +54,7 @@ void p3test()
             .mie = MIE_ALL,
             .entry_hi = ASID, // TODO (TUTOR): EntryHI.ASID? (oppure (ASID)<<32), chiedere ai tutor
         };
-        print("UPROCS states initialized\n");
+        print("- states initialized\n");
 
         // Support Structures Initialization
         uprocsSuppStructs[i] = (support_t){
@@ -62,29 +62,39 @@ void p3test()
             .sup_exceptContext = {
                 (context_t){
                     .pc = (memaddr)TLBHandler,
-                    .status = MSTATUS_MPP_M, // TODO: cosi' va in kernel mode?
-                    //.stackPtr = &uprocsSuppStructs[i].sup_stackTLB[499] // TODO (TUTOR): chiedere ai tutor, sup_stackTLB non esiste
+                    .status = MSTATUS_MPP_M, // TODO (glielo chiediamo oggi): cosi' va in kernel mode?
+                    .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackTLB[499]),
                 },
                 (context_t){
                     .pc = (memaddr)generalExceptHandler,
                     .status = MSTATUS_MPP_M, // TODO: cosi' va in kernel mode?
-                    //.stackPtr = &uprocsSuppStructs[i].sup_stackGen[499] // TODO (TUTOR): chiedere ai tutor, sup_stackGen non esiste
+                    .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackGen[499]),
                 }
             },
         };
-        print("UPROCS Support Structures initialized\n");
+        print("- Support Structures initialized\n");
 
-        // Page Tables Initialization (TODO: non e' elegante)
+        // Page Tables Initialization
         for (int j = 0; j < USERPGTBLSIZE; j++) {
-            if (j == USERPGTBLSIZE-1) uprocsSuppStructs[i].sup_privatePgTbl[USERPGTBLSIZE-1].pte_entryHI = 0xBFFFF << VPNSHIFT; // page 32
-            else uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = (KUSEG + j) << VPNSHIFT; // pages from 0 to 31
-            uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = ASID << ASIDSHIFT;
-            uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO |= DIRTYON;
-            uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
-            uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
-        }
-        print("UPROCS Page Tables initialized\n");
+            // TODO: togliamo questo codice commentato dopo che ci siamo assicurati che funzioni allo stesso modo
+            //if (j == USERPGTBLSIZE-1) uprocsSuppStructs[i].sup_privatePgTbl[USERPGTBLSIZE-1].pte_entryHI = 0xBFFFF << VPNSHIFT; // page 32
+            //else uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = (KUSEG + j) << VPNSHIFT; // pages from 0 to 31
+            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = ASID << ASIDSHIFT;
+            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO |= DIRTYON;
+            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
+            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
 
+            unsigned int vpn = j == (USERPGTBLSIZE-1 ? 0xBFFFF : (KUSEG + j)) << VPNSHIFT; // page 32 is set to the stack starting address
+            unsigned int asid = ASID << ASIDSHIFT;
+            unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
+            uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
+                .pte_entryHI = vpn + asid,
+                .pte_entryLO = entryLO
+            };
+        }
+        print("- Page Tables initialized\n");
+
+        print("~ Creating the UPROC\n");
         SYSCALL(CREATEPROCESS, (int)&uprocsStates[i], PROCESS_PRIO_LOW, (int)&uprocsSuppStructs[i]);
 
     }

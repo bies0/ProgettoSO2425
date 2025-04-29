@@ -1,14 +1,15 @@
 # WorkFlow Phase 3
 
-1. Data structures (2, 4.1)
-2. Initialization (9)
-3. TLB-Refill Handler (3, 4.2, 5)
-4. General Exception Handler (6)
-5. Syscall Handler (7)
-6. Program Trap Handler (8)
-7. Optimizations (10)
+A. Data structures (2, 4.1)
+B. Initialization (9, 5.1, 12)
+C. TLB-Refill Handler (3, 4.2, 5.2-4)
+D. General Exception Handler (6)
+E. Syscall Handler (7)
+F. Program Trap Handler (8)
+G. Optimizations (10, 11)
 
 # WorkTeams:
-- Biagio-Nicolò     (nome team)  : 4, 5, 6
-- Castiglioni-Linty (nome team)  : 1, 2, 7
-- Together          (i più forti): 3 + final debugging
+
+- Biagio-Nicolò     (nome team)  : D, E, F
+- Castiglioni-Linty (nome team)  : A, B
+- Together          (i più forti): C, G, final debugging
