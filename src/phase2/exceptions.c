@@ -4,6 +4,7 @@ extern void scheduler();
 extern volatile unsigned int global_lock;
 extern pcb_t *current_process[];
 
+extern unsigned int get_page_index(state_t *state);
 extern void killTree(pcb_t* root); // declared in sysHandler.c
 void passUpOrDie(int index, state_t* state); // forward declaration
 
@@ -25,6 +26,24 @@ void exceptionHandler()
         }
     }
 }
+
+// No calls to print in uTLB_RefillHandler! (anche se funzionano, boooh)
+void uTLB_RefillHandler() {
+    print("~~~ TLB Refill ~~~\n");
+    int prid = getPRID();
+    state_t *state = GET_EXCEPTION_STATE_PTR(prid);
+    unsigned int p = get_page_index(state);
+
+    ACQUIRE_LOCK(&global_lock);
+    pteEntry_t entry = current_process[prid]->p_supportStruct->sup_privatePgTbl[p];
+    RELEASE_LOCK(&global_lock);
+
+    setENTRYHI(entry.pte_entryHI);
+    setENTRYLO(entry.pte_entryLO);
+    TLBWR();
+
+    LDST(state);
+}   
 
 void passUpOrDie(int index, state_t* state) {
     pcb_t *caller = NULL;

@@ -3,8 +3,6 @@
 #include "sysSupport.c"
 
 extern void print(char *msg);
-extern void TLBHandler(); // TODO: abbiamo scoperto che in realta' basta includere il file c e non dichiarare la funzione extern
-extern void generalExceptHandler(); // TODO: anche qui
 
 // Data Structures
 #define SWAP_POOL_TABLE_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
@@ -12,7 +10,7 @@ swap_t *swapPoolTable;
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM];
 
-#define UPROCS UPROCMAX // TODO: metti a UPROCMAX
+#define UPROCS 1 //UPROCMAX // TODO: metti a UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
@@ -43,16 +41,17 @@ void p3test()
         int ASID = i+1;
 
         print("Initializing UPROC ");
-        for (int n = 0; n < ASID; n++) print("|");
+        char n_str[] = {ASID+'0'};
+        print(n_str);
         print("\n");
 
         // States Initialization
         uprocsStates[i] = (state_t){
             .pc_epc = UPROCSTARTADDR,
             .reg_sp = USERSTACKTOP,
-            .status = (MSTATUS_MPIE_MASK), //  user mode is achieved by not setting the MSTATUS_MPP_M, all interrupts enabled (MSTATUS_MPIE_MASK) e PLT enabled (TODO (TUTOR): chiedere ai tutor)
-            .mie = MIE_ALL,
-            .entry_hi = ASID, // TODO (TUTOR): EntryHI.ASID? (oppure (ASID)<<32), chiedere ai tutor
+            .status = MSTATUS_MPIE_MASK, //  user mode is achieved by not setting the MSTATUS_MPP_M, all interrupts and PLT enabled
+            .mie = MIE_ALL, // all interrupts enabled
+            .entry_hi = ASID << ASIDSHIFT,
         };
         print("- states initialized\n");
 
@@ -61,7 +60,7 @@ void p3test()
             .sup_asid = ASID,
             .sup_exceptContext = {
                 (context_t){
-                    .pc = (memaddr)TLBHandler,
+                    .pc = (memaddr)TLBExceptionHandler,
                     .status = MSTATUS_MPP_M, // TODO (glielo chiediamo oggi): cosi' va in kernel mode?
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackTLB[499]),
                 },
@@ -84,7 +83,7 @@ void p3test()
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
 
-            unsigned int vpn = j == (USERPGTBLSIZE-1 ? 0xBFFFF : (KUSEG + j)) << VPNSHIFT; // page 32 is set to the stack starting address
+            unsigned int vpn = (j == USERPGTBLSIZE-1 ? 0xBFFFF : (KUSEG + j)) << VPNSHIFT; // page 32 is set to the stack starting address
             unsigned int asid = ASID << ASIDSHIFT;
             unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){

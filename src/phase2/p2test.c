@@ -130,15 +130,15 @@ void print(char *msg) {
 
 /* TLB-Refill Handler */
 /* One can place debug calls here, but not calls to print */
-void uTLB_RefillHandler() {
-
-    int prid = getPRID();
-    setENTRYHI(0x80000000);
-    setENTRYLO(0x00000000);
-    TLBWR();
-
-    LDST(GET_EXCEPTION_STATE_PTR(prid));
-}
+//void uTLB_RefillHandler() { // Now moved to vmSupport.c in phase3
+//
+//    int prid = getPRID();
+//    setENTRYHI(0x80000000);
+//    setENTRYLO(0x00000000);
+//    TLBWR();
+//
+//    LDST(GET_EXCEPTION_STATE_PTR(prid));
+//}
 
 
 /*********************************************************************/
