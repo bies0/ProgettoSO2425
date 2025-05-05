@@ -2,7 +2,35 @@
 #include "vmSupport.c"
 #include "sysSupport.c"
 
+#include "../klog.c" // TODO: togli
+
+// Print utilities
 extern void print(char *msg);
+void print_dec(char *msg, int n)
+{
+    char n_str[] = {n + '0', '\0'};
+    print(msg);
+    print(n_str);
+    print("\n");
+}
+void print_long_dec(char *msg, unsigned int n)
+{
+    if (n < 10) {
+        print_dec(msg, n);
+        return;
+    }
+    print(msg); // TODO (non importante): stampa al contrario
+    while (n > 0) {
+        int d = n % 10;
+        char d_str[] = {d + '0', '\0'};
+        print(d_str);
+        n /= 10;
+    }
+    print("\n");
+}
+//////////
+
+void breakpoint() {}
 
 // Data Structures
 #define SWAP_POOL_TABLE_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
@@ -40,10 +68,7 @@ void p3test()
     for (int i = 0; i < UPROCS; i++) {
         int ASID = i+1;
 
-        print("Initializing UPROC ");
-        char n_str[] = {ASID+'0'};
-        print(n_str);
-        print("\n");
+        print_dec("Initializing UPROC ", ASID);
 
         // States Initialization
         uprocsStates[i] = (state_t){
@@ -53,6 +78,7 @@ void p3test()
             .mie = MIE_ALL, // all interrupts enabled
             .entry_hi = ASID << ASIDSHIFT,
         };
+
         print("- states initialized\n");
 
         // Support Structures Initialization
@@ -87,14 +113,14 @@ void p3test()
             unsigned int asid = ASID << ASIDSHIFT;
             unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
-                .pte_entryHI = vpn + asid,
+                .pte_entryHI = vpn | asid,
                 .pte_entryLO = entryLO
             };
         }
         print("- Page Tables initialized\n");
 
         print("~ Creating the UPROC\n");
-        SYSCALL(CREATEPROCESS, (int)&uprocsStates[i], PROCESS_PRIO_LOW, (int)&uprocsSuppStructs[i]);
+        SYSCALL(CREATEPROCESS, (int)&uprocsStates[i], 0, (int)&uprocsSuppStructs[i]);
 
     }
     print("U-Procs have been successfully initialized\n");

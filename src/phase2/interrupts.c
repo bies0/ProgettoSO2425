@@ -5,6 +5,10 @@ extern int device_semaphores[];
 extern struct pcb_t *current_process[NCPU];
 extern const unsigned int PSEUDO_CLOCK_INDEX;
 
+extern void klog_print();
+extern void klog_print_dec();
+extern void klog_print_hex();
+
 extern void scheduler();
 
 #define TERMSTATMASK 0xFF
@@ -59,6 +63,12 @@ void interruptHandler(state_t *state, int exccode)
         default: PANIC();
     }
 
+    if (IntlineNo != 7 && IntlineNo != 1 && IntlineNo != 2) {
+        klog_print("intline: "); // TODO: togli
+        klog_print_dec(IntlineNo);
+        klog_print("\n");
+    }
+
     int prid = getPRID();
     if (exccode != IL_CPUTIMER && exccode != IL_TIMER) {
         int DevNo = getDevNo(IntlineNo);
@@ -78,11 +88,15 @@ void interruptHandler(state_t *state, int exccode)
                 devreg->term.recv_command = ACK; 
             }
         } else {
+            klog_print("devno: "); // TODO: togli
+            klog_print_dec(DevNo);
+            klog_print("\n");
+
             status_code = devreg->dtp.status;
             devreg->dtp.command = ACK;
         }
 
-        int *semaddr = &(device_semaphores[(IntlineNo-3)*8 + DevNo]); // get the right device semaphore
+        int *semaddr = &(device_semaphores[(IntlineNo-3)*DEVPERINT + DevNo]); // get the right device semaphore
         pcb_t *pcb = removeBlocked(semaddr); // V on the device semaphore
         if (pcb != NULL) { // there was actually a pcb blocked on the device semaphore
             pcb->p_s.reg_a0 = status_code;

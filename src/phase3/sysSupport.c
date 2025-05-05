@@ -1,13 +1,13 @@
 extern void print(char *msg);
 
-// mancava la macro in const.h
+// mancava la macro in const.h // segnalare ai tutor
 #define READTERMINAL 5
 
-void supportTrapHandler() {
+void supportTrapHandler() { // TODO
 
 }
 
-void writePrinter(support_t *supp, state_t *state) {
+void writePrinter(support_t *supp, state_t *state) { // TODO
     char* vAddrMsg = (char*)state->reg_a1;
     int msgLen = (int)state->reg_a2;
     if (msgLen < 0 || msgLen > MAXSTRLENG) {
@@ -21,6 +21,7 @@ void writePrinter(support_t *supp, state_t *state) {
     // dtpreg_t* devReg = devregarea.devreg[3][devNo] // si può fare anche così?
 
     unsigned int status;
+    (void) status; // TODO: usa sto status
     unsigned int value;
     int charSent = 0;
     while (charSent < msgLen) {

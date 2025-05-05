@@ -7,8 +7,12 @@
 #include "h/print.h"
 #include "../../headers/const.h"
 #include "../globals.h"
+#include "../initProc.c"
 
 void main() {
+
+    breakpoint();
+
 	int status, status2, i;
 	char buf[20];
 	char buf2[20];

@@ -3,6 +3,10 @@
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
 
+extern void klog_print(); // TODO: togli
+extern void klog_print_dec();
+extern void klog_print_hex();
+
 extern void scheduler();
 extern void exceptionHandler();
 extern void passUpOrDie(int index, state_t* state);
@@ -206,10 +210,16 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     // Here we calculate the interrupt line number and the device number
     memaddr IntLineBase = commandAddr - START_DEVREG; // makes the address start from 0
     int IntlineNo = (IntLineBase / INT_LINE_SIZE) + 3; // gets the interrupt line number by dividing by the size of an interrupt line, then add 3 because the first interrupt line that can perform an I/O is the third (disk)
+    if (IntlineNo != 7) { // TODO: togli
+        klog_print("lineno in doio: ");
+        klog_print_dec(IntlineNo);
+        klog_print("\n");
+    }
     int DevNo = (IntLineBase - ((IntlineNo-3)*INT_LINE_SIZE)) / (DEVREGLEN * WS); // gets the device number by going to the right interrupt line and then dividing by the size of one device register
 
-    if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == RECVCOMMAND)) // it's a terminal and in receive
+    if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == RECVCOMMAND)) {// it's a terminal and in receive
         IntlineNo = 8; // Makes it easier to get the device semaphore 
+    }
     ACQUIRE_LOCK(&global_lock);
     insertBlocked(&(device_semaphores[(IntlineNo-3)*DEVPERINT+DevNo]), caller); // inserts the calling process on the right device semaphore
 

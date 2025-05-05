@@ -2,6 +2,8 @@
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
 
+//#include "../klog.c" // TODO: togli!
+
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
