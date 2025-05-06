@@ -4,7 +4,7 @@ extern void print(char *msg);
 #define READTERMINAL 5
 
 void supportTrapHandler() { // TODO
-
+    //print("~~~ Trap Handler ~~~\n");
 }
 
 void writePrinter(support_t *supp, state_t *state) { // TODO
@@ -36,7 +36,7 @@ void writePrinter(support_t *supp, state_t *state) { // TODO
 
 void generalExceptHandler()
 {
-    print("~~~ generalExceptHandler ~~~\n");
+    //print("~~~ generalExceptHandler ~~~\n");
     
     support_t* supp = (support_t*)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t* state = &(supp->sup_exceptState[GENERALEXCEPT]);

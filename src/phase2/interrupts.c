@@ -64,9 +64,9 @@ void interruptHandler(state_t *state, int exccode)
     }
 
     if (IntlineNo != 7 && IntlineNo != 1 && IntlineNo != 2) {
-        klog_print("intline: "); // TODO: togli
-        klog_print_dec(IntlineNo);
-        klog_print("\n");
+        //klog_print("intline: "); // TODO: togli
+        //klog_print_dec(IntlineNo);
+        //klog_print("\n");
     }
 
     int prid = getPRID();
@@ -88,9 +88,9 @@ void interruptHandler(state_t *state, int exccode)
                 devreg->term.recv_command = ACK; 
             }
         } else {
-            klog_print("devno: "); // TODO: togli
-            klog_print_dec(DevNo);
-            klog_print("\n");
+            //klog_print("devno: "); // TODO: togli
+            //klog_print_dec(DevNo);
+            //klog_print("\n");
 
             status_code = devreg->dtp.status;
             devreg->dtp.command = ACK;

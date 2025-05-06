@@ -1,6 +1,7 @@
 extern void print(char *msg);
 extern void print_dec(char *msg, int n);
 extern void print_long_dec(char *msg, unsigned int n);
+extern void print_hex(char *msg, unsigned int n);
 
 extern void breakpoint();
 
@@ -15,21 +16,14 @@ extern int suppDevSems[];
 #define FLASHWRITE_ERROR 5
 #define FLASHREAD_ERROR 5
 #define STATUSMASK 0XFF
-//#define FLASHADDR(asid) (START_DEVREG + ((FLASH_INTLINENO - 3) * 0x80) + (((asid) - 1) * 0x10))
+//#define FLASHADDR(asid) (START_DEVREG + ((FLASH_INTLINENO - 3) * 0x80) + (((asid) - 1) * 0x10)) // abbiamo trovato la macro gia' fatta, quindi questa si puo togliere se tutto funziona (TODO)
 #define FLASHADDR(asid) DEV_REG_ADDR(IL_FLASH, asid-1)
 
-unsigned int get_page_index(state_t *state) // TODO: passare entryhi al posto di state
+unsigned int get_page_index(unsigned int entry_hi)
 {
-    //print("page: ");
-    unsigned int vpn = ENTRYHI_GET_VPN(state->entry_hi);
-    unsigned int page = (vpn == 0xBFFFF) ? (USERPGTBLSIZE-1) : (vpn & 0x000FF);
-    //if (page == USERPGTBLSIZE-1) {
-    //    print("stack page\n");
-    //} else {
-    //    for (int i = 0; i <= page; i++) print("|");
-    //    print("\n");
-    //}
-    return page;
+    unsigned int vpn = ENTRYHI_GET_VPN(entry_hi);
+    if (vpn == (ENTRYHI_VPN_MASK >> VPNSHIFT)) return USERPGTBLSIZE-1;
+    else return vpn;
 }
 
 void updateTLB(unsigned int entryHi)
@@ -52,9 +46,7 @@ int pickFrame()
 void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
 {
     print_dec("flash asid: ", asid);
-
-    print_long_dec("addr: ", addr);
-
+    print_hex("addr: ", addr);
     print_dec("block: ", block);
 
     int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
@@ -64,15 +56,9 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
     int commandAddr = (int)&devreg->command;
     int commandValue = (is_read ? FLASHREAD : FLASHWRITE) | (block << 8);
 
-    print("Pre DOIO\n");
-
     devreg->data0 = addr;
 
-    breakpoint();
-
     int status = SYSCALL(DOIO, commandAddr, commandValue, 0);
-
-    print("Post DOIO\n");
 
     SYSCALL(VERHOGEN, (int)sem_flash, 0, 0);
 
@@ -98,34 +84,19 @@ void writeFlash(unsigned int asid, memaddr addr, int block)
 
 // The Pager
 void TLBExceptionHandler() {
-
-    // TODO: sappiamo che abbiamo un problema con l'asid, ma nemmeno questo lo risolve
-    //ACQUIRE_LOCK(&global_lock); // TODO: stiamo provando
-    unsigned int badvaddr = getBADVADDR(); // TODO: stiamo provando
-    //unsigned int p = ENTRYHI_GET_VPN(badvaddr);
-    //unsigned int ASID = ENTRYHI_GET_ASID(badvaddr);
-    //RELEASE_LOCK(&global_lock);
-    //print_dec("vpn: ", (int)p);
-    //print_dec("pager asid: ", (int)ASID);
-
-    print("~~~ The Pager ~~~\n");
-
+    print("~~~ Pager ~~~\n");
     support_t *supp = (support_t *)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t *state = &(supp->sup_exceptState[PGFAULTEXCEPT]);
 
-    print_long_dec("badvaddr: ", badvaddr);
-    print_long_dec("entryhi : ", state->entry_hi);
-
     if (state->cause == EXC_MOD) {
         // treat it as a program trap
-        print("EXC_MOD: trap\n");
         supportTrapHandler();
     }
 
     SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
 
-    unsigned int p = get_page_index(state);
-    unsigned int ASID = ENTRYHI_GET_ASID(state->entry_hi); // TODO: l'errore dell'asid potrebbe stare qua, se state->entry_hi e' vuoto, cioe' 0, anche l'asid ricavato sara' 0.
+    unsigned int p = get_page_index(state->entry_hi);
+    unsigned int ASID = supp->sup_asid;
 
     int i = 0;
     int found = FALSE;
@@ -150,17 +121,13 @@ void TLBExceptionHandler() {
     swap_t *swap = &swapPoolTable[frame];
     int occupied = swap->sw_asid != -1; 
     if (occupied) {
-        print("Occupied page\n");
         int k = swap->sw_pageNo;    
         pteEntry_t *entry = swap->sw_pte;
         entry->pte_entryLO &= ~VALIDON; // invalidate page k
         int asid = swap->sw_asid;
-        print_dec("swap asid: ", asid);
         updateTLB(entry->pte_entryHI);
-        print("Writing flash\n");
         writeFlash(asid, frame_addr, k);
     }
-    print("Reading flash\n");
     readFlash(ASID, frame_addr, p);
     swap->sw_asid = ASID;
     swap->sw_pageNo = p;
@@ -172,7 +139,7 @@ void TLBExceptionHandler() {
 
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 
-    print("Pager out\n");
+    breakpoint(); // TODO: togli
 
     LDST(state);
 }

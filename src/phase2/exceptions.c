@@ -6,8 +6,10 @@ extern volatile unsigned int global_lock;
 extern pcb_t *current_process[];
 
 extern void print_long_dec(char *msg, unsigned int n);
+extern void klog_print();
+extern void klog_print_dec();
 
-extern unsigned int get_page_index(state_t *state);
+extern unsigned int get_page_index(unsigned int entry_hi);
 extern void killTree(pcb_t* root); // declared in sysHandler.c
 void passUpOrDie(int index, state_t* state); // forward declaration
 
@@ -30,56 +32,45 @@ void exceptionHandler()
     }
 }
 
-// No calls to print in uTLB_RefillHandler! (anche se funzionano, boooh)
-void uTLB_RefillHandler() { // TODO: non funziona
-    print("~~~ TLB Refill ~~~\n");
+// No calls to print in uTLB_RefillHandler!
+void uTLB_RefillHandler() { // TODO: togli klog
+    //klog_print("tlb refill: ");
 
-#if 1 // TODO: togli
     int prid = getPRID();
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
-    unsigned int p = get_page_index(state);
+
+    unsigned int p = get_page_index(state->entry_hi);
+
+    //klog_print("page ");
+    //klog_print_dec(p);
+    //klog_print(" | ");
 
     ACQUIRE_LOCK(&global_lock);
-
     pcb_t *pcb = current_process[prid];
+    RELEASE_LOCK(&global_lock);
+
     if (pcb == NULL || pcb->p_supportStruct == NULL) {
-        RELEASE_LOCK(&global_lock);
-        print("Error in uTLB_RefillHandler\n");
         PANIC();
     }
 
     pteEntry_t *entry = &(pcb->p_supportStruct->sup_privatePgTbl[p]);
-    //if (!(entry->pte_entryLO & VALIDON)) {
-    //    RELEASE_LOCK(&global_lock);
-    //    print("Page is not valid\n");
-    //    TLBExceptionHandler();
-    //}
 
-    unsigned int entryHI = (p << VPNSHIFT) | (pcb->p_supportStruct->sup_asid << ASIDSHIFT);
-    unsigned int entryLO = entry->pte_entryLO;
-
-    setENTRYHI(entryHI);
-    setENTRYLO(entryLO);
+    setENTRYHI(entry->pte_entryHI);
+    setENTRYLO(entry->pte_entryLO);
     TLBWR();
 
-    RELEASE_LOCK(&global_lock);
+    //klog_print("fine.\n"); // TODO: togli
+
+    breakpoint();
 
     LDST(state);
-
-#else
-    // Vecchia uTLB_RefillHandler
-    int prid = getPRID();
-    setENTRYHI(0x80000000);
-    setENTRYLO(0x00000000);
-    TLBWR();
-    LDST(GET_EXCEPTION_STATE_PTR(prid));
-#endif
 }   
 
 void passUpOrDie(int index, state_t* state) {
     pcb_t *caller = NULL;
+    int prid = getPRID();
     ACQUIRE_LOCK(&global_lock);
-    caller = current_process[getPRID()];
+    caller = current_process[prid];
     RELEASE_LOCK(&global_lock);
 
     if (caller->p_supportStruct == NULL) {
@@ -88,9 +79,14 @@ void passUpOrDie(int index, state_t* state) {
         RELEASE_LOCK(&global_lock);
     } else {
         caller->p_supportStruct->sup_exceptState[index] = *state;
-        unsigned int asid = ENTRYHI_GET_ASID(state->entry_hi);
-        print_long_dec("asid in passup: ", asid);
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
+
+        //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo crasha senza dire niente.
+        //current_process[prid] = NULL;
+        //RELEASE_LOCK(&global_lock);
+
+        breakpoint(); // TODO: togli
+
         LDCXT(context->stackPtr, context->status, context->pc);
     }
     scheduler(); // call the scheduler after the passUpOrDie procedure has killed the process

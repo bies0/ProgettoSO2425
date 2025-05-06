@@ -4,6 +4,8 @@
 
 #include "../klog.c" // TODO: togli
 
+#define UPROCSTACKPGADDR 0xBFFFF000
+
 // Print utilities
 extern void print(char *msg);
 void print_dec(char *msg, int n)
@@ -26,6 +28,19 @@ void print_long_dec(char *msg, unsigned int n)
         print(d_str);
         n /= 10;
     }
+    print("\n");
+}
+void print_hex(char *msg, unsigned int n)
+{
+    const char digits[] = "0123456789ABCDEF";
+
+    print(msg);
+    do {
+        char c = digits[n % 16];
+        char str[] = {c, '\0'};
+        print(str); 
+        n /= 16;
+    } while (n > 0);
     print("\n");
 }
 //////////
@@ -102,14 +117,21 @@ void p3test()
         // Page Tables Initialization
         for (int j = 0; j < USERPGTBLSIZE; j++) {
             // TODO: togliamo questo codice commentato dopo che ci siamo assicurati che funzioni allo stesso modo
-            //if (j == USERPGTBLSIZE-1) uprocsSuppStructs[i].sup_privatePgTbl[USERPGTBLSIZE-1].pte_entryHI = 0xBFFFF << VPNSHIFT; // page 32
+            //if (j == USERPGTBLSIZE-1) uprocsSuppStructs[i].sup_privatePgTbl[USERPGTBLSIZE-1].pte_entryHI = UPROCSTACKPGADDR << VPNSHIFT; // page 32
             //else uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = (KUSEG + j) << VPNSHIFT; // pages from 0 to 31
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = ASID << ASIDSHIFT;
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO |= DIRTYON;
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
 
-            unsigned int vpn = (j == USERPGTBLSIZE-1 ? 0xBFFFF : (KUSEG + j)) << VPNSHIFT; // page 32 is set to the stack starting address
+            // 0x000|FF000
+            // 0x800|00000
+            // 0x800|1E000
+
+            unsigned int vpn;
+            if (j != USERPGTBLSIZE-1) vpn = KUSEG | (j << VPNSHIFT);
+            else vpn = UPROCSTACKPGADDR; // page 32 is set to the stack starting address
+
             unsigned int asid = ASID << ASIDSHIFT;
             unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
@@ -120,7 +142,7 @@ void p3test()
         print("- Page Tables initialized\n");
 
         print("~ Creating the UPROC\n");
-        SYSCALL(CREATEPROCESS, (int)&uprocsStates[i], 0, (int)&uprocsSuppStructs[i]);
+        SYSCALL(CREATEPROCESS, (int)&(uprocsStates[i]), 0, (int)&(uprocsSuppStructs[i]));
 
     }
     print("U-Procs have been successfully initialized\n");
