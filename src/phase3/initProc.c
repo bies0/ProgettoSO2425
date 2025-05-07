@@ -1,3 +1,8 @@
+// TODO:
+// - ottimizzazioni in sezione 10
+// - mettere NCPU a 8
+// - mettere UPROCS a UPROCMAX
+
 #include "globals.h"
 #include "vmSupport.c"
 #include "sysSupport.c"
@@ -7,21 +12,20 @@
 #define UPROCSTACKPGADDR 0xBFFFF000
 
 // Print utilities
+#define ENABLE_PRINT FALSE
+#define ENABLE_KLOG  FALSE
+
 extern void print(char *msg);
-void print_dec(char *msg, int n)
-{
-    char n_str[] = {n + '0', '\0'};
-    print(msg);
-    print(n_str);
-    print("\n");
-}
-void print_long_dec(char *msg, unsigned int n)
+void print_dec(char *msg, unsigned int n) // TODO (non importante): stampa al contrario
 {
     if (n < 10) {
-        print_dec(msg, n);
+        char n_str[] = {n + '0', '\0'};
+        print(msg);
+        print(n_str);
+        print("\n");
         return;
-    }
-    print(msg); // TODO (non importante): stampa al contrario
+    } 
+    print(msg);
     while (n > 0) {
         int d = n % 10;
         char d_str[] = {d + '0', '\0'};
@@ -43,6 +47,13 @@ void print_hex(char *msg, unsigned int n)
     } while (n > 0);
     print("\n");
 }
+void print_state(state_t *state)
+{
+    print("state:\n");
+    print_hex("  entryHi = ", state->entry_hi);
+    print_hex("  pc      = ", state->pc_epc);
+    print_hex("  status  = ", state->status);
+}
 //////////
 
 void breakpoint() {}
@@ -60,7 +71,7 @@ support_t uprocsSuppStructs[UPROCS] = {0};
 
 void p3test()
 {
-    print("Phase 3 test begins!\n");
+    if (ENABLE_PRINT) print("Phase 3 test begins!\n");
 
     // Data Structures Initialization
     swapPoolTable = (swap_t *)SWAP_POOL_TABLE_ADDR;
@@ -75,15 +86,15 @@ void p3test()
     }
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
-    masterSemaphore = 0; // TODO (non davvero cosi' utile): chiedere ai tutor se va bene averlo messo nel file `globals.h`
+    masterSemaphore = 0;
 
-    print("Data Structures have been successfully initialized\n");
+    if (ENABLE_PRINT) print("Data Structures have been successfully initialized\n");
 
-    // U-Procs Initialization: TODO (5.1) (read the flash and get the information (with DOIO), come si fa?)
+    // U-Procs Initialization
     for (int i = 0; i < UPROCS; i++) {
         int ASID = i+1;
 
-        print_dec("Initializing UPROC ", ASID);
+        //print_dec("Initializing UPROC ", ASID);
 
         // States Initialization
         uprocsStates[i] = (state_t){
@@ -94,7 +105,7 @@ void p3test()
             .entry_hi = ASID << ASIDSHIFT,
         };
 
-        print("- states initialized\n");
+        //print("- states initialized\n");
 
         // Support Structures Initialization
         uprocsSuppStructs[i] = (support_t){
@@ -102,17 +113,17 @@ void p3test()
             .sup_exceptContext = {
                 (context_t){
                     .pc = (memaddr)TLBExceptionHandler,
-                    .status = MSTATUS_MPP_M, // TODO (glielo chiediamo oggi): cosi' va in kernel mode?
+                    .status = MSTATUS_MPP_M,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackTLB[499]),
                 },
                 (context_t){
                     .pc = (memaddr)generalExceptHandler,
-                    .status = MSTATUS_MPP_M, // TODO: cosi' va in kernel mode?
+                    .status = MSTATUS_MPP_M,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackGen[499]),
                 }
             },
         };
-        print("- Support Structures initialized\n");
+        //print("- Support Structures initialized\n");
 
         // Page Tables Initialization
         for (int j = 0; j < USERPGTBLSIZE; j++) {
@@ -124,39 +135,35 @@ void p3test()
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
             //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
 
-            // 0x000|FF000
-            // 0x800|00000
-            // 0x800|1E000
-
             unsigned int vpn;
             if (j != USERPGTBLSIZE-1) vpn = KUSEG | (j << VPNSHIFT);
             else vpn = UPROCSTACKPGADDR; // page 32 is set to the stack starting address
 
-            unsigned int asid = ASID << ASIDSHIFT;
+            unsigned int entryHi = vpn | (ASID << ASIDSHIFT);
             unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
-                .pte_entryHI = vpn | asid,
+                .pte_entryHI = entryHi,
                 .pte_entryLO = entryLO
             };
         }
-        print("- Page Tables initialized\n");
+        //print("- Page Tables initialized\n");
 
-        print("~ Creating the UPROC\n");
+        //print("~ Creating the UPROC\n");
         SYSCALL(CREATEPROCESS, (int)&(uprocsStates[i]), 0, (int)&(uprocsSuppStructs[i]));
 
     }
-    print("U-Procs have been successfully initialized\n");
+    //print("U-Procs have been successfully initialized\n");
 
     for (int i = 0; i < UPROCS; i++) {
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
     }
 
-    print("Test successfully ended!\n");
-    print("\n");
-    print("Le race conditions erano di nuovo sulle mie tracce.\n");
-    print("\n");
+    //print("Test successfully ended!\n");
+    //print("\n");
+    //print("Le race conditions erano di nuovo sulle mie tracce.\n");
+    //print("\n");
 
     SYSCALL(TERMPROCESS, 0, 0, 0);
 
-    print("UNREACHABLE: test process must have terminated");
+    //print("UNREACHABLE: test process must have terminated");
 }

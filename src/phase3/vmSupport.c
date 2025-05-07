@@ -1,7 +1,10 @@
 extern void print(char *msg);
-extern void print_dec(char *msg, int n);
-extern void print_long_dec(char *msg, unsigned int n);
+extern void print_dec(char *msg, unsigned int n);
 extern void print_hex(char *msg, unsigned int n);
+extern void print_state(state_t *state);
+
+extern void klog_print(char *msg);
+extern void klog_print_hex(unsigned int n);
 
 extern void breakpoint();
 
@@ -26,15 +29,20 @@ unsigned int get_page_index(unsigned int entry_hi)
     else return vpn;
 }
 
-void updateTLB(unsigned int entryHi)
+//#define BETTERUPDATETLB // TODO
+void updateTLB(pteEntry_t *entry)
 {
-    setENTRYHI(entryHi);
+#ifndef BETTERUPDATETLB
+    TLBCLR();
+#else
+    setENTRYHI(entry->pte_entryHI);
     TLBP();
     unsigned int index = getINDEX();
     if (!(index & PRESENTFLAG)) { // Index.P == 0 => found in TLB
-        //TLBWI(); // TODO: da fare in futuro
-        TLBCLR();
+        setENTRYLO(entry->pte_entryLO);
+        TLBWI();
     }
+#endif
 }
 
 int pickFrame()
@@ -45,9 +53,9 @@ int pickFrame()
 
 void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
 {
-    print_dec("flash asid: ", asid);
-    print_hex("addr: ", addr);
-    print_dec("block: ", block);
+    //print_dec("flash asid: ", asid);
+    //print_hex("addr: ", addr);
+    //print_dec("block: ", block);
 
     int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
     SYSCALL(PASSEREN, (int)sem_flash, 0, 0);
@@ -63,13 +71,13 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
     SYSCALL(VERHOGEN, (int)sem_flash, 0, 0);
 
     if ((status & STATUSMASK) == (is_read ? FLASHREAD_ERROR : FLASHWRITE_ERROR)) {
-        if (is_read) print("ERROR reading flash\n");
-        else print("ERROR writing flash\n");
+        //if (is_read) print("ERROR reading flash\n");
+        //else print("ERROR writing flash\n");
         supportTrapHandler();
     }
 
-    if (is_read) print("Reading flash done!\n");
-    else print("Writing flash done!\n");
+    //if (is_read) print("Reading flash done!\n");
+    //else print("Writing flash done!\n");
 }
 
 void readFlash(unsigned int asid, memaddr addr, int block)
@@ -84,7 +92,8 @@ void writeFlash(unsigned int asid, memaddr addr, int block)
 
 // The Pager
 void TLBExceptionHandler() {
-    print("~~~ Pager ~~~\n");
+    //print("~~~ Pager ~~~\n");
+
     support_t *supp = (support_t *)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t *state = &(supp->sup_exceptState[PGFAULTEXCEPT]);
 
@@ -98,6 +107,8 @@ void TLBExceptionHandler() {
     unsigned int p = get_page_index(state->entry_hi);
     unsigned int ASID = supp->sup_asid;
 
+    //print_dec("vpn: ", p);
+
     int i = 0;
     int found = FALSE;
     while (!found && i < POOLSIZE) {
@@ -109,24 +120,29 @@ void TLBExceptionHandler() {
         }
     } 
     if (found) {
-        updateTLB(swapPoolTable[i].sw_pte->pte_entryHI);
+        //print("page found\n");
+        updateTLB(swapPoolTable[i].sw_pte);
         if (supp->sup_privatePgTbl[p].pte_entryLO & ENTRYLO_VALID) { // page is valid
+            //print("page is valid\n");
             SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
-            LDST(state); // TODO: e' questo o e' quello in GET_EXCEPTION_STATE_PTR(getPRID())?
+
+            //print_state(state); // TODO: togli
+
+            LDST(state); // TODO: potrebbe essere questo GET_EXCEPTION_STATE_PTR(getPRID()), anche se non sembra
         } 
     }
 
     int frame = pickFrame(); // TODO: se po fa' mejo // this is frame i
     memaddr frame_addr = (memaddr)(swapPoolTable + frame);
     swap_t *swap = &swapPoolTable[frame];
-    int occupied = swap->sw_asid != -1; 
+    int occupied = swap->sw_asid != -1;
     if (occupied) {
         int k = swap->sw_pageNo;    
         pteEntry_t *entry = swap->sw_pte;
         entry->pte_entryLO &= ~VALIDON; // invalidate page k
-        int asid = swap->sw_asid;
-        updateTLB(entry->pte_entryHI);
-        writeFlash(asid, frame_addr, k);
+        int x_asid = swap->sw_asid;
+        updateTLB(entry);
+        writeFlash(x_asid, frame_addr, k);
     }
     readFlash(ASID, frame_addr, p);
     swap->sw_asid = ASID;
@@ -135,11 +151,9 @@ void TLBExceptionHandler() {
     swap->sw_pte->pte_entryLO |= VALIDON;
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
     swap->sw_pte->pte_entryLO |= (frame << ENTRYLO_PFN_BIT); // set PFN to frame i
-    updateTLB(swap->sw_pte->pte_entryHI);
+    updateTLB(swap->sw_pte);
 
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
-
-    breakpoint(); // TODO: togli
 
     LDST(state);
 }

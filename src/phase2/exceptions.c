@@ -34,22 +34,16 @@ void exceptionHandler()
 
 // No calls to print in uTLB_RefillHandler!
 void uTLB_RefillHandler() { // TODO: togli klog
-    //klog_print("tlb refill: ");
-
     int prid = getPRID();
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
 
     unsigned int p = get_page_index(state->entry_hi);
 
-    //klog_print("page ");
-    //klog_print_dec(p);
-    //klog_print(" | ");
-
     ACQUIRE_LOCK(&global_lock);
     pcb_t *pcb = current_process[prid];
-    RELEASE_LOCK(&global_lock);
 
     if (pcb == NULL || pcb->p_supportStruct == NULL) {
+        RELEASE_LOCK(&global_lock);
         PANIC();
     }
 
@@ -59,9 +53,18 @@ void uTLB_RefillHandler() { // TODO: togli klog
     setENTRYLO(entry->pte_entryLO);
     TLBWR();
 
-    //klog_print("fine.\n"); // TODO: togli
+    RELEASE_LOCK(&global_lock);
 
-    breakpoint();
+    //klog_print("state: ");
+    //klog_print("entryhi = ");
+    //klog_print_hex(state->entry_hi);
+    //klog_print(", status = ");
+    //klog_print_hex(state->status);
+    //klog_print(", pc_epc = ");
+    //klog_print_hex(state->pc_epc);
+    //klog_print(" | ");
+
+    breakpoint(); // TODO: togli
 
     LDST(state);
 }   
@@ -81,11 +84,11 @@ void passUpOrDie(int index, state_t* state) {
         caller->p_supportStruct->sup_exceptState[index] = *state;
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
 
-        //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo crasha senza dire niente.
+        //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo tutte le CPU vanno tutte in ACQUIRE_LOCK.
         //current_process[prid] = NULL;
         //RELEASE_LOCK(&global_lock);
 
-        breakpoint(); // TODO: togli
+        //breakpoint(); // TODO: togli
 
         LDCXT(context->stackPtr, context->status, context->pc);
     }
