@@ -92,7 +92,7 @@ void writeFlash(unsigned int asid, memaddr addr, int block)
 
 // The Pager
 void TLBExceptionHandler() {
-    //print("~~~ Pager ~~~\n");
+    print("~~~ Pager ~~~\n");
 
     support_t *supp = (support_t *)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t *state = &(supp->sup_exceptState[PGFAULTEXCEPT]);
@@ -120,10 +120,10 @@ void TLBExceptionHandler() {
         }
     } 
     if (found) {
-        //print("page found\n");
+        print("page found\n");
         updateTLB(swapPoolTable[i].sw_pte);
         if (supp->sup_privatePgTbl[p].pte_entryLO & ENTRYLO_VALID) { // page is valid
-            //print("page is valid\n");
+            print("page is valid\n");
             SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 
             //print_state(state); // TODO: togli
@@ -150,7 +150,8 @@ void TLBExceptionHandler() {
     swap->sw_pte = &supp->sup_privatePgTbl[p];
     swap->sw_pte->pte_entryLO |= VALIDON;
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
-    swap->sw_pte->pte_entryLO |= (frame << ENTRYLO_PFN_BIT); // set PFN to frame i
+    //swap->sw_pte->pte_entryLO |= (frame << ENTRYLO_PFN_BIT); // set PFN to frame i // TUTOR: hanno detto che e' sbagliato
+    swap->sw_pte->pte_entryLO |= frame_addr; // set PFN to frame i // TUTOR: dicono che si faccia cosi'
     updateTLB(swap->sw_pte);
 
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
