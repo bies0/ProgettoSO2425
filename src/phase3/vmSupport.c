@@ -150,9 +150,7 @@ void TLBExceptionHandler() {
     swap->sw_pte = &supp->sup_privatePgTbl[p];
     swap->sw_pte->pte_entryLO |= VALIDON;
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
-    //swap->sw_pte->pte_entryLO |= (frame << ENTRYLO_PFN_BIT); // set PFN to frame i // TUTOR: hanno detto che e' sbagliato
-    swap->sw_pte->pte_entryLO |= frame_addr; // set PFN to frame i // TUTOR: dicono che si faccia cosi'
-    updateTLB(swap->sw_pte);
+    swap->sw_pte->pte_entryLO |= (frame_addr << ENTRYLO_PFN_BIT); // set PFN to frame i's address
 
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 
