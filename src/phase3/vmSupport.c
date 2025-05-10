@@ -11,9 +11,12 @@ extern void breakpoint();
 extern volatile unsigned int global_lock; 
 extern struct pcb_t *current_process[];
 extern swap_t *swapPoolTable;
-extern int semSwapPoolTable;
-extern void supportTrapHandler();
+// extern int semSwapPoolTable;
+extern void supportTrapHandler(int asidToTerminate);
 extern int suppDevSems[];
+
+extern void acquireSwapPoolTable(int asid);
+extern void releaseSwapPoolTable();
 
 #define FLASH_INTLINENO 4
 #define FLASHWRITE_ERROR 5
@@ -73,7 +76,7 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
     if ((status & STATUSMASK) == (is_read ? FLASHREAD_ERROR : FLASHWRITE_ERROR)) {
         //if (is_read) print("ERROR reading flash\n");
         //else print("ERROR writing flash\n");
-        supportTrapHandler();
+        supportTrapHandler(asid);
     }
 
     //if (is_read) print("Reading flash done!\n");
@@ -99,13 +102,17 @@ void TLBExceptionHandler() {
 
     if (state->cause == EXC_MOD) {
         // treat it as a program trap
-        supportTrapHandler();
+        supportTrapHandler(supp->sup_asid);
     }
 
-    SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
+    // SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
+    // unsigned int p = get_page_index(state->entry_hi);
+    // unsigned int ASID = supp->sup_asid;
+
+    unsigned int ASID = supp->sup_asid;
+    acquireSwapPoolTable(ASID);
 
     unsigned int p = get_page_index(state->entry_hi);
-    unsigned int ASID = supp->sup_asid;
 
     //print_dec("vpn: ", p);
 
@@ -124,7 +131,8 @@ void TLBExceptionHandler() {
         updateTLB(swapPoolTable[i].sw_pte);
         if (supp->sup_privatePgTbl[p].pte_entryLO & ENTRYLO_VALID) { // page is valid
             print("page is valid\n");
-            SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
+            // SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
+            releaseSwapPoolTable();
 
             //print_state(state); // TODO: togli
 
@@ -152,7 +160,13 @@ void TLBExceptionHandler() {
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
     swap->sw_pte->pte_entryLO |= (frame_addr << ENTRYLO_PFN_BIT); // set PFN to frame i's address
 
-    SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
+    // SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
+    releaseSwapPoolTable();
+
+    // char buf[10]; // TODO: togli, sono prove per le syscall
+    // int status = SYSCALL(5, (int)&buf[0], 0, 0);
+    // SYSCALL(WRITETERMINAL, (int)&buf[0], status, 0);
+
 
     LDST(state);
 }

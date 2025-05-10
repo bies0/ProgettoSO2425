@@ -217,7 +217,7 @@ void doInputOutput(state_t *state, int prid, pcb_t* caller) {
     //}
     int DevNo = (IntLineBase - ((IntlineNo-3)*INT_LINE_SIZE)) / (DEVREGLEN * WS); // gets the device number by going to the right interrupt line and then dividing by the size of one device register
 
-    if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == RECVCOMMAND)) {// it's a terminal and in receive
+    if (IntlineNo == 7 && (IntLineBase - ((7-3)*INT_LINE_SIZE + DevNo*DEVREGSIZE) == (RECVCOMMAND * DEV_REG_SIZE_W))) {// it's a terminal and in receive
         IntlineNo = 8; // Makes it easier to get the device semaphore 
     }
     ACQUIRE_LOCK(&global_lock);

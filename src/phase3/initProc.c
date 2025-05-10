@@ -16,6 +16,9 @@
 #define ENABLE_KLOG  FALSE
 
 extern void print(char *msg);
+extern int printToTerminal(char* msg, int lenMsg, int termNo);
+extern int printToPrinter(char* msg, int lenMsg, int printNo);
+extern int inputTerminal(char* addrReturn, int termNo);
 void print_dec(char *msg, unsigned int n) // TODO (non importante): stampa al contrario
 {
     if (n < 10) {
@@ -64,6 +67,16 @@ swap_t *swapPoolTable;
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM];
 
+int asidSemSwapPool = -1;
+void acquireSwapPoolTable(int asid) {
+    asidSemSwapPool = asid;
+    SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
+}
+void releaseSwapPoolTable() {
+    asidSemSwapPool = -1;
+    SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
+}
+
 #define UPROCS 1 //UPROCMAX // TODO: metti a UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
@@ -89,6 +102,13 @@ void p3test()
     masterSemaphore = 0;
 
     if (ENABLE_PRINT) print("Data Structures have been successfully initialized\n");
+
+    // print("test funzioni syscall, scrivi una linea:\n");
+    // char str[100]; // TODO: solo per fare vedere a Mathieu e a Flowerboy che funzionano
+    // int msgLen = inputTerminal(&str[0], 0);
+    // printToTerminal(&str[0], msgLen, 0);
+    // printToPrinter(&str[0], msgLen, 7);
+
 
     // U-Procs Initialization
     for (int i = 0; i < UPROCS; i++) {
