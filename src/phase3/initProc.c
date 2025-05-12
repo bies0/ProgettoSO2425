@@ -3,7 +3,6 @@
 // - mettere NCPU a 8
 // - mettere UPROCS a UPROCMAX
 
-#include "globals.h"
 #include "vmSupport.c"
 #include "sysSupport.c"
 
@@ -62,8 +61,9 @@ void print_state(state_t *state)
 void breakpoint() {}
 
 // Data Structures
-#define SWAP_POOL_TABLE_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
-swap_t *swapPoolTable;
+int masterSemaphore;
+
+swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM];
 
@@ -87,15 +87,12 @@ void p3test()
     if (ENABLE_PRINT) print("Phase 3 test begins!\n");
 
     // Data Structures Initialization
-    swapPoolTable = (swap_t *)SWAP_POOL_TABLE_ADDR;
     for (int i = 0; i < POOLSIZE; i++) {
-        swap_t swap = {
+        swapPoolTable[i] = (swap_t){
             .sw_asid   = -1,
             .sw_pageNo = 0,
             .sw_pte    = NULL
         };
-        swapPoolTable[i] = swap;
-        //*(swap_t *)(SWAP_POOL_TABLE_ADDR + i*sizeof(swap_t)) = swap; // E' la stessa cosa
     }
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
@@ -178,12 +175,10 @@ void p3test()
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
     }
 
-    //print("Test successfully ended!\n");
-    //print("\n");
-    //print("Le race conditions erano di nuovo sulle mie tracce.\n");
-    //print("\n");
+    print("\nTest successfully ended!\n");
+    //print("\nLe race conditions erano di nuovo sulle mie tracce.\n\n");
 
     SYSCALL(TERMPROCESS, 0, 0, 0);
 
-    //print("UNREACHABLE: test process must have terminated");
+    print("UNREACHABLE: test process must have terminated\n");
 }

@@ -1,5 +1,3 @@
-#include "globals.h"
-
 // mancava la macro in const.h // segnalare ai tutor
 #define READTERMINAL 5
 
@@ -13,6 +11,8 @@ extern int suppDevSems[NSUPPSEM];
 
 extern int asidSemSwapPool;
 extern void releaseSwapPoolTable();
+
+extern int masterSemaphore;
 
 void killUproc(int asidToTerminate) {
     if (asidSemSwapPool == asidToTerminate) {
@@ -132,21 +132,24 @@ void generalExceptHandler()
     state_t* state = &(supp->sup_exceptState[GENERALEXCEPT]);
     int asid = supp->sup_asid;
 
+    print_dec("asid: ", asid);
+    print_dec("syscall: ", state->reg_a0);
+
     switch(state->reg_a0) {
-    case TERMINATE:
-        killUproc(asid);
-        break;
-    case WRITEPRINTER:
-        writeDevice(state, asid, WRITEPRINTER);
-        break;
-    case WRITETERMINAL:
-        writeDevice(state, asid, WRITETERMINAL);
-        break;
-    case READTERMINAL:
-        readTerminal(state, asid);
-        break;
-    default:
-        supportTrapHandler(asid);
-        break;
+        case TERMINATE:
+            killUproc(asid);
+            break;
+        case WRITEPRINTER:
+            writeDevice(state, asid, WRITEPRINTER);
+            break;
+        case WRITETERMINAL:
+            writeDevice(state, asid, WRITETERMINAL);
+            break;
+        case READTERMINAL:
+            readTerminal(state, asid);
+            break;
+        default:
+            supportTrapHandler(asid);
+            break;
     }
 }

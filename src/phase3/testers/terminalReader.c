@@ -4,8 +4,7 @@
 
 #include "h/tconst.h"
 #include "h/print.h"
-#include "../../headers/const.h"
-#include "../globals.h"
+
 
 void main() {
 	int status;
@@ -22,8 +21,7 @@ void main() {
 	
 	print(WRITETERMINAL, "\n\nTerminal Read concluded\n");
 
-    SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
-
+		
 	/* Terminate normally */	
 	SYSCALL(TERMINATE, 0, 0, 0);
 }
