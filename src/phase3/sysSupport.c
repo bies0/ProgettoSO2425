@@ -10,20 +10,31 @@ extern void restoreCurrentProcess(state_t *state);
 extern int suppDevSems[NSUPPSEM];
 
 extern int asidSemSwapPool;
+extern void acquireSwapPoolTable(int asid);
 extern void releaseSwapPoolTable();
 
 extern int masterSemaphore;
 
 void killUproc(int asidToTerminate) {
-    if (asidSemSwapPool == asidToTerminate) {
-        releaseSwapPoolTable();
+    if (asidSemSwapPool != asidToTerminate) {
+        acquireSwapPoolTable(asidToTerminate);
     }
+    for (int i = 0; i < POOLSIZE; i++) { // Optimization to eliminate extraneous writes to the backing store
+        swap_t *swap = &swapPoolTable[i];
+        if (swap->sw_asid == asidToTerminate) {
+            swap->sw_asid = -1;
+        }
+    }
+    releaseSwapPoolTable();
+
+    //print("V on master\n");
     SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
     SYSCALL(TERMPROCESS, 0, 0, 0);
 }
 
 void supportTrapHandler(int asidToTerminate) { // TODO
-    print("~~~ Trap Handler ~~~\n");
+    //print("~~~ Trap Handler ~~~\n");
+    print_dec("Terminating uproc ", asidToTerminate);
     killUproc(asidToTerminate);
 }
 
@@ -76,7 +87,7 @@ int inputTerminal(char* addrReturn, int termNo) {
     while (1) {
         int status = SYSCALL(DOIO, (int)&devReg->recv_command, RECEIVECHAR, 0);
         if ((status & 0xFF) != 5) {
-            print_dec("errore inputTerminal: ", status);
+            //print_dec("errore inputTerminal: ", status);
             SYSCALL(VERHOGEN, (int)sem, 0, 0);
             return -status;
         }
@@ -126,14 +137,14 @@ void readTerminal(state_t* state, int asid) {
 
 void generalExceptHandler()
 {
-    print("~~~ generalExceptHandler ~~~\n");
+    //print("~~~ generalExceptHandler ~~~\n");
     
     support_t* supp = (support_t*)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t* state = &(supp->sup_exceptState[GENERALEXCEPT]);
     int asid = supp->sup_asid;
 
-    print_dec("asid: ", asid);
-    print_dec("syscall: ", state->reg_a0);
+    //print_dec("asid: ", asid);
+    //print_dec("syscall: ", state->reg_a0);
 
     switch(state->reg_a0) {
         case TERMINATE:

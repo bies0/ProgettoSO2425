@@ -2,6 +2,17 @@
 // - ottimizzazioni in sezione 10
 // - mettere NCPU a 8
 // - mettere UPROCS a UPROCMAX
+//
+// - riscaricare i tester originali
+// UPROCS:
+// 0. strConcat
+// 1. fibEight
+// 2. terminalReader
+// 3. fibEleven
+// 4. terminalTest5
+// 5. terminalTest2
+// 6. terminalTest3
+// 7. printerTest
 
 #include "vmSupport.c"
 #include "sysSupport.c"
@@ -65,7 +76,7 @@ int masterSemaphore;
 
 swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
-int suppDevSems[NSUPPSEM];
+int suppDevSems[NSUPPSEM]; // TODO: array con gli asid dei processi che tengono la mutua esclusione per liberarla quando il processo viene ucciso
 
 int asidSemSwapPool = -1;
 void acquireSwapPoolTable(int asid) {
@@ -77,7 +88,7 @@ void releaseSwapPoolTable() {
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 }
 
-#define UPROCS 1 //UPROCMAX // TODO: metti a UPROCMAX
+#define UPROCS UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
@@ -128,14 +139,14 @@ void p3test()
         uprocsSuppStructs[i] = (support_t){
             .sup_asid = ASID,
             .sup_exceptContext = {
-                (context_t){
+                (context_t){ // PGFAULTEXCEPT context
                     .pc = (memaddr)TLBExceptionHandler,
-                    .status = MSTATUS_MPP_M,
+                    .status = MSTATUS_MPP_M | MSTATUS_MPIE_MASK,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackTLB[499]),
                 },
-                (context_t){
+                (context_t){ // GENERALEXCEPT context
                     .pc = (memaddr)generalExceptHandler,
-                    .status = MSTATUS_MPP_M,
+                    .status = MSTATUS_MPP_M | MSTATUS_MPIE_MASK,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackGen[499]),
                 }
             },
@@ -144,20 +155,12 @@ void p3test()
 
         // Page Tables Initialization
         for (int j = 0; j < USERPGTBLSIZE; j++) {
-            // TODO: togliamo questo codice commentato dopo che ci siamo assicurati che funzioni allo stesso modo
-            //if (j == USERPGTBLSIZE-1) uprocsSuppStructs[i].sup_privatePgTbl[USERPGTBLSIZE-1].pte_entryHI = UPROCSTACKPGADDR << VPNSHIFT; // page 32
-            //else uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = (KUSEG + j) << VPNSHIFT; // pages from 0 to 31
-            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryHI = ASID << ASIDSHIFT;
-            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO |= DIRTYON;
-            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~GLOBALON;
-            //uprocsSuppStructs[i].sup_privatePgTbl[j].pte_entryLO &= ~VALIDON;
-
             unsigned int vpn;
             if (j != USERPGTBLSIZE-1) vpn = KUSEG | (j << VPNSHIFT);
             else vpn = UPROCSTACKPGADDR; // page 32 is set to the stack starting address
 
             unsigned int entryHi = vpn | (ASID << ASIDSHIFT);
-            unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0 (TODO: ma e' giusto? altrimenti lo facciamo in piu' passaggi come sopra)
+            unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
                 .pte_entryHI = entryHi,
                 .pte_entryLO = entryLO
@@ -172,11 +175,12 @@ void p3test()
     //print("U-Procs have been successfully initialized\n");
 
     for (int i = 0; i < UPROCS; i++) {
+        //print("P on master\n");
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
     }
 
     print("\nTest successfully ended!\n");
-    //print("\nLe race conditions erano di nuovo sulle mie tracce.\n\n");
+    print("\nLe race conditions erano di nuovo sulle mie tracce.\n\n");
 
     SYSCALL(TERMPROCESS, 0, 0, 0);
 

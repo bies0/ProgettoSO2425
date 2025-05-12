@@ -37,8 +37,8 @@ void exceptionHandler()
 // No calls to print in uTLB_RefillHandler!
 void uTLB_RefillHandler() { // TODO: togli klog
     int prid = getPRID();
-    klog_print_dec(prid);
-    klog_print(" | ");
+    //klog_print_dec(prid);
+    //klog_print(" | ");
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
 
     unsigned int p = get_page_index(state->entry_hi);
@@ -89,12 +89,12 @@ void passUpOrDie(int index, state_t* state) {
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
 
         if (context == NULL) PANIC(); // TODO: togli
-        klog_print("stackPtr: ");
-        klog_print_hex(context->stackPtr);
-        klog_print(", ");
-        klog_print("pc: ");
-        klog_print_hex(context->pc);
-        klog_print(" | ");
+        //klog_print("stackPtr: ");
+        //klog_print_hex(context->stackPtr);
+        //klog_print(", ");
+        //klog_print("pc: ");
+        //klog_print_hex(context->pc);
+        //klog_print(" | ");
 
         //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo tutte le CPU vanno tutte in ACQUIRE_LOCK.
         //current_process[prid] = NULL;

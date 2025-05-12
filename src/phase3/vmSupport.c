@@ -23,7 +23,6 @@ extern void releaseSwapPoolTable();
 #define FLASHWRITE_ERROR 5
 #define FLASHREAD_ERROR 4
 #define STATUSMASK 0XFF
-//#define FLASHADDR(asid) (START_DEVREG + ((FLASH_INTLINENO - 3) * 0x80) + (((asid) - 1) * 0x10)) // abbiamo trovato la macro gia' fatta, quindi questa si puo togliere se tutto funziona (TODO)
 #define FLASHADDR(asid) DEV_REG_ADDR(IL_FLASH, asid-1)
 
 unsigned int get_page_index(unsigned int entry_hi)
@@ -33,7 +32,7 @@ unsigned int get_page_index(unsigned int entry_hi)
     else return vpn;
 }
 
-//#define BETTERUPDATETLB // TODO
+#define BETTERUPDATETLB // TODO
 void updateTLB(pteEntry_t *entry)
 {
 #ifndef BETTERUPDATETLB
@@ -55,14 +54,14 @@ int pickFrame()
     return ((frame++) % POOLSIZE);
 }
 
-void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: non da mai errore, pero non sembra funzionare
+void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: non da mai errore, pero' non sembra funzionare
 {
-    if (is_read) print("Reading flash\n");
-    else print("Writing flash\n");
+    //if (is_read) print("Reading flash\n");
+    //else print("Writing flash\n");
 
-    print_dec("flash: ", asid-1);
-    print_hex("addr: ", addr);
-    print_dec("block: ", block);
+    //print_dec("flash: ", asid-1);
+    //print_hex("addr: ", addr);
+    //print_dec("block: ", block);
 
     int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
     SYSCALL(PASSEREN, (int)sem_flash, 0, 0);
@@ -79,13 +78,13 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: n
 
     int error = is_read ? FLASHREAD_ERROR : FLASHWRITE_ERROR;
     if ((status & STATUSMASK) == error) {
-        if (is_read) print("ERROR reading flash\n");
-        else print("ERROR writing flash\n");
+        //if (is_read) print("ERROR reading flash\n");
+        //else print("ERROR writing flash\n");
         supportTrapHandler(asid);
-    } else print_dec("status: ", status & STATUSMASK);
+    } else {/*print_dec("status: ", status & STATUSMASK);*/}
 
-    if (is_read) print("Reading flash done!\n");
-    else print("Writing flash done!\n");
+    //if (is_read) print("Reading flash done!\n");
+    //else print("Writing flash done!\n");
 }
 
 void readFlash(unsigned int asid, memaddr addr, int block)
@@ -100,7 +99,7 @@ void writeFlash(unsigned int asid, memaddr addr, int block)
 
 // The Pager
 void TLBExceptionHandler() {
-    print("~~~ Pager ~~~\n");
+    //print("~~~ Pager ~~~\n");
 
     support_t *supp = (support_t *)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t *state = &(supp->sup_exceptState[PGFAULTEXCEPT]);
@@ -112,11 +111,11 @@ void TLBExceptionHandler() {
     }
 
     unsigned int ASID = supp->sup_asid;
-    print_dec("asid: ", ASID);
+    //print_dec("asid: ", ASID);
     acquireSwapPoolTable(ASID);
 
     unsigned int p = get_page_index(state->entry_hi);
-    print_dec("vpn: ", p);
+    //print_dec("vpn: ", p);
 
     int i = 0;
     int found = FALSE;
@@ -129,10 +128,10 @@ void TLBExceptionHandler() {
         }
     } 
     if (found) {
-        print("page found\n");
+        //print("page found\n");
         updateTLB(swapPoolTable[i].sw_pte);
         if (supp->sup_privatePgTbl[p].pte_entryLO & ENTRYLO_VALID) { // page is valid
-            print("page is valid\n");
+            //print("page is valid\n");
             releaseSwapPoolTable();
 
             //print_state(state); // TODO: togli
@@ -143,8 +142,8 @@ void TLBExceptionHandler() {
 
     int frame = pickFrame(); // TODO: se po fa' mejo // this is frame i
     memaddr frame_addr = GET_SWAP_POOL_ADDR(frame);
-    print_dec("frame: ", frame);
-    print_hex("frame addr: ", frame_addr);
+    //print_dec("frame: ", frame);
+    //print_hex("frame addr: ", frame_addr);
     swap_t *swap = &swapPoolTable[frame];
     int occupied = swap->sw_asid != -1;
     if (occupied) {
@@ -160,8 +159,9 @@ void TLBExceptionHandler() {
     swap->sw_pageNo = p;
     swap->sw_pte = &supp->sup_privatePgTbl[p];
     swap->sw_pte->pte_entryLO |= VALIDON;
+    //print_hex("is dirty:", ); // TODO: stavamo provando questo
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
-    swap->sw_pte->pte_entryLO |= (frame_addr << ENTRYLO_PFN_BIT); // set PFN to frame i's address
+    swap->sw_pte->pte_entryLO |= (frame_addr); // set PFN to frame i's address // TODO: sembra che sia giusto cosi'
 
     releaseSwapPoolTable();
 
