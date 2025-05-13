@@ -21,10 +21,7 @@
 
 #define UPROCSTACKPGADDR 0xBFFFF000
 
-// Print utilities
-#define ENABLE_PRINT FALSE
-#define ENABLE_KLOG  FALSE
-
+// Print utilities // TODO: togli
 extern void print(char *msg);
 extern int printToTerminal(char* msg, int lenMsg, int termNo);
 extern int printToPrinter(char* msg, int lenMsg, int printNo);
@@ -88,15 +85,13 @@ void releaseSwapPoolTable() {
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 }
 
-#define UPROCS UPROCMAX
+#define UPROCS UPROCMAX // TODO: si rompe con 7
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
 
 void p3test()
 {
-    if (ENABLE_PRINT) print("Phase 3 test begins!\n");
-
     // Data Structures Initialization
     for (int i = 0; i < POOLSIZE; i++) {
         swapPoolTable[i] = (swap_t){
@@ -109,8 +104,6 @@ void p3test()
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
     masterSemaphore = 0;
 
-    if (ENABLE_PRINT) print("Data Structures have been successfully initialized\n");
-
     // print("test funzioni syscall, scrivi una linea:\n");
     // char str[100]; // TODO: solo per fare vedere a Mathieu e a Flowerboy che funzionano
     // int msgLen = inputTerminal(&str[0], 0);
@@ -122,8 +115,6 @@ void p3test()
     for (int i = 0; i < UPROCS; i++) {
         int ASID = i+1;
 
-        //print_dec("Initializing UPROC ", ASID);
-
         // States Initialization
         uprocsStates[i] = (state_t){
             .pc_epc = UPROCSTARTADDR,
@@ -132,8 +123,6 @@ void p3test()
             .mie = MIE_ALL, // all interrupts enabled
             .entry_hi = ASID << ASIDSHIFT,
         };
-
-        //print("- states initialized\n");
 
         // Support Structures Initialization
         uprocsSuppStructs[i] = (support_t){
@@ -151,7 +140,6 @@ void p3test()
                 }
             },
         };
-        //print("- Support Structures initialized\n");
 
         // Page Tables Initialization
         for (int j = 0; j < USERPGTBLSIZE; j++) {
@@ -166,16 +154,12 @@ void p3test()
                 .pte_entryLO = entryLO
             };
         }
-        //print("- Page Tables initialized\n");
 
-        //print("~ Creating the UPROC\n");
         SYSCALL(CREATEPROCESS, (int)&(uprocsStates[i]), 0, (int)&(uprocsSuppStructs[i]));
 
     }
-    //print("U-Procs have been successfully initialized\n");
 
     for (int i = 0; i < UPROCS; i++) {
-        //print("P on master\n");
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
     }
 

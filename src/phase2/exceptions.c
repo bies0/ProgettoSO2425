@@ -6,8 +6,6 @@ extern volatile unsigned int global_lock;
 extern pcb_t *current_process[];
 
 extern void print_long_dec(char *msg, unsigned int n);
-extern void klog_print();
-extern void klog_print_dec();
 
 extern unsigned int get_page_index(unsigned int entry_hi);
 extern void killTree(pcb_t* root); // declared in sysHandler.c
@@ -35,10 +33,8 @@ void exceptionHandler()
 }
 
 // No calls to print in uTLB_RefillHandler!
-void uTLB_RefillHandler() { // TODO: togli klog
+void uTLB_RefillHandler() {
     int prid = getPRID();
-    //klog_print_dec(prid);
-    //klog_print(" | ");
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
 
     unsigned int p = get_page_index(state->entry_hi);
@@ -59,17 +55,6 @@ void uTLB_RefillHandler() { // TODO: togli klog
 
     RELEASE_LOCK(&global_lock);
 
-    //klog_print("state: "); // TODO: togli
-    //klog_print("entryhi = ");
-    //klog_print_hex(state->entry_hi);
-    //klog_print(", status = ");
-    //klog_print_hex(state->status);
-    //klog_print(", pc_epc = ");
-    //klog_print_hex(state->pc_epc);
-    //klog_print(" | ");
-
-    tlbrefill_bp(); // TODO: togli
-
     LDST(state);
 }   
 
@@ -87,14 +72,6 @@ void passUpOrDie(int index, state_t* state) {
     } else {
         caller->p_supportStruct->sup_exceptState[index] = *state;
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
-
-        if (context == NULL) PANIC(); // TODO: togli
-        //klog_print("stackPtr: ");
-        //klog_print_hex(context->stackPtr);
-        //klog_print(", ");
-        //klog_print("pc: ");
-        //klog_print_hex(context->pc);
-        //klog_print(" | ");
 
         //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo tutte le CPU vanno tutte in ACQUIRE_LOCK.
         //current_process[prid] = NULL;
