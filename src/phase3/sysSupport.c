@@ -3,6 +3,8 @@
 
 #define KUSEGENDPAGES (KUSEG+PAGESIZE*(MAXPAGES-1))
 
+#include "../klog.c"
+
 extern void print(char *msg);
 extern void print_dec(char *msg, unsigned int n);
 
@@ -16,26 +18,31 @@ extern void releaseSwapPoolTable();
 
 extern int masterSemaphore;
 
-void killUproc(int asidToTerminate) {
-    //if (asidSemSwapPool != asidToTerminate) {
-    //    acquireSwapPoolTable(asidToTerminate);
-    //}
-    //for (int i = 0; i < POOLSIZE; i++) { // Optimization to eliminate extraneous writes to the backing store
-    //    swap_t *swap = &swapPoolTable[i];
-    //    if (swap->sw_asid == asidToTerminate) {
-    //        swap->sw_asid = -1;
-    //    }
-    //}
-    //releaseSwapPoolTable();
-    //if (asidSemSwapPool == asidToTerminate) { // TODO
-    //    releaseSwapPoolTable();
-    //}
+int printToPrinter(char* msg, int lenMsg, int printNo);
 
+void killUproc(int asidToTerminate) {
+    if (asidSemSwapPool != asidToTerminate) {
+        acquireSwapPoolTable(asidToTerminate);
+    }
+    for (int i = 0; i < POOLSIZE; i++) { // Optimization to eliminate extraneous writes to the backing store
+        swap_t *swap = &swapPoolTable[i];
+        if (swap->sw_asid == asidToTerminate) {
+            swap->sw_asid = -1;
+        }
+    }
+    releaseSwapPoolTable();
+
+    //printToPrinter("V on masterSemaphore\n", 21, 0); // TODO: se non la metti non funziona
+
+    //print("V on masterSemaphore\n"); // TODO: togli
+    //print_dec("kill", asidToTerminate-1);
+    //klog_print_dec(asidToTerminate-1);
+                                                     
     SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
     SYSCALL(TERMPROCESS, 0, 0, 0);
 }
 
-void supportTrapHandler(int asidToTerminate) { // TODO
+void supportTrapHandler(int asidToTerminate) {
     killUproc(asidToTerminate);
 }
 
@@ -107,10 +114,11 @@ void writeDevice(state_t* state, int asid, int operation) { // TODO
     if (msgLen < 0 || msgLen > MAXSTRLENG) {
         killUproc(asid);
     }
-    // TODO: tolto il controllo degli indirizzi validi per fare funzionare la syscall nel pager
-    // if ((memaddr)vAddrMsg < (memaddr)KUSEG || (memaddr)vAddrMsg > (memaddr)KUSEGENDPAGES) {
-    //     killUproc(asid);
-    // }
+    //if ((memaddr)vAddrMsg < SWAP_POOL_START_ADDR ||
+    //    (memaddr)vAddrMsg > SWAP_POOL_START_ADDR+POOLSIZE*PAGESIZE) { // TODO: senza questo funziona, sono probabilmente sbagliati gli indirissia. Prima avevamo messo KUSEG e KUSEGENDPAGES
+    //    print("\nsegfault write\n");
+    //    killUproc(asid);
+    //}
     int devNo = asid-1;
     int status;
     if (operation == WRITETERMINAL) {
@@ -123,12 +131,14 @@ void writeDevice(state_t* state, int asid, int operation) { // TODO
     restoreCurrentProcess(state);
 }
 
+#define SWAP_POOL_START_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
 void readTerminal(state_t* state, int asid) {
     char* vAddrReturn = (char*)state->reg_a1;
-    // TODO: tolto il controllo degli indirizzi validi per fare funzionare la syscall nel pager
-    // if ((memaddr)vAddrReturn < (memaddr)KUSEG || (memaddr)vAddrReturn > (memaddr)KUSEGENDPAGES) {
-    //     killUproc(asid);
-    // }
+    //if ((memaddr)vAddrReturn < SWAP_POOL_START_ADDR ||
+    //    (memaddr)vAddrReturn > SWAP_POOL_START_ADDR+POOLSIZE*PAGESIZE) { // TODO: senza questo funziona, sono probabilmente sbagliati gli indirissia, prima avevamo messo KUSEG e KUSEGENDPAGES
+    //    print("\nsegfault read\n");
+    //    killUproc(asid);
+    //}
     int devNo = asid-1;
     int status = inputTerminal(vAddrReturn, devNo);
     state->reg_a0 = status;

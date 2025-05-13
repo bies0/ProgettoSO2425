@@ -3,7 +3,9 @@
 // - mettere NCPU a 8
 // - mettere UPROCS a UPROCMAX
 //
-// - riscaricare i tester originali
+// > rilasciare i semafori (devices e swapPoolTable) prima di una killUproc
+// > controllo indirizzi in readTerminal e writeDevice
+//
 // UPROCS:
 // 0. strConcat
 // 1. fibEight
@@ -17,8 +19,6 @@
 #include "vmSupport.c"
 #include "sysSupport.c"
 
-#include "../klog.c" // TODO: togli
-
 #define UPROCSTACKPGADDR 0xBFFFF000
 
 // Print utilities // TODO: togli
@@ -26,7 +26,7 @@ extern void print(char *msg);
 extern int printToTerminal(char* msg, int lenMsg, int termNo);
 extern int printToPrinter(char* msg, int lenMsg, int printNo);
 extern int inputTerminal(char* addrReturn, int termNo);
-void print_dec(char *msg, unsigned int n) // TODO (non importante): stampa al contrario
+void print_dec(char *msg, unsigned int n)
 {
     if (n < 10) {
         char n_str[] = {n + '0', '\0'};
@@ -75,17 +75,17 @@ swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM]; // TODO: array con gli asid dei processi che tengono la mutua esclusione per liberarla quando il processo viene ucciso
 
-int asidSemSwapPool = -1;
+int asidSemSwapPool;
 void acquireSwapPoolTable(int asid) {
-    asidSemSwapPool = asid;
     SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
+    asidSemSwapPool = asid;
 }
 void releaseSwapPoolTable() {
     asidSemSwapPool = -1;
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 }
 
-#define UPROCS UPROCMAX // TODO: si rompe con 7
+#define UPROCS 7//UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
@@ -103,6 +103,7 @@ void p3test()
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
     masterSemaphore = 0;
+    asidSemSwapPool = -1;
 
     // print("test funzioni syscall, scrivi una linea:\n");
     // char str[100]; // TODO: solo per fare vedere a Mathieu e a Flowerboy che funzionano
@@ -130,12 +131,12 @@ void p3test()
             .sup_exceptContext = {
                 (context_t){ // PGFAULTEXCEPT context
                     .pc = (memaddr)TLBExceptionHandler,
-                    .status = MSTATUS_MPP_M | MSTATUS_MPIE_MASK,
+                    .status = MSTATUS_MPP_M,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackTLB[499]),
                 },
                 (context_t){ // GENERALEXCEPT context
                     .pc = (memaddr)generalExceptHandler,
-                    .status = MSTATUS_MPP_M | MSTATUS_MPIE_MASK,
+                    .status = MSTATUS_MPP_M,
                     .stackPtr = (memaddr)&(uprocsSuppStructs[i].sup_stackGen[499]),
                 }
             },
@@ -161,6 +162,8 @@ void p3test()
 
     for (int i = 0; i < UPROCS; i++) {
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
+        //print("P on masterSemaphore\n"); // TODO: togli
+
     }
 
     print("\nTest successfully ended!\n");

@@ -134,7 +134,7 @@ void TLBExceptionHandler() {
     swap->sw_pte = &supp->sup_privatePgTbl[p];
     swap->sw_pte->pte_entryLO |= VALIDON;
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
-    swap->sw_pte->pte_entryLO |= (frame_addr); // set PFN to frame i's address // TODO: sembra che sia giusto cosi'
+    swap->sw_pte->pte_entryLO |= (frame_addr); // set PFN to frame i's address
 
     releaseSwapPoolTable();
 
