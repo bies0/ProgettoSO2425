@@ -58,7 +58,7 @@ int main()
     process_count = 0;
     mkEmptyProcQ(&ready_queue);
     for (int i = 0; i < NCPU; i++) current_process[i] = NULL;
-    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = 1;
+    for (int i = 0; i < NRSEMAPHORES; i++) device_semaphores[i] = 0;
     global_lock = 0;
 
     // 5. System-wide Interval Timer loading

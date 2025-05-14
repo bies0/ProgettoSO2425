@@ -21,7 +21,7 @@ extern int masterSemaphore;
 int printToPrinter(char* msg, int lenMsg, int printNo);
 
 void killUproc(int asidToTerminate) {
-    if (asidSemSwapPool != asidToTerminate) {
+    if (asidSemSwapPool != asidToTerminate) { // TODO: commentare il fatto che non e' un problema se non accediamo questa variabile globale in mutua esclusione
         acquireSwapPoolTable(asidToTerminate);
     }
     for (int i = 0; i < POOLSIZE; i++) { // Optimization to eliminate extraneous writes to the backing store
@@ -32,12 +32,6 @@ void killUproc(int asidToTerminate) {
     }
     releaseSwapPoolTable();
 
-    //printToPrinter("V on masterSemaphore\n", 21, 0); // TODO: se non la metti non funziona
-
-    //print("V on masterSemaphore\n"); // TODO: togli
-    //print_dec("kill", asidToTerminate-1);
-    //klog_print_dec(asidToTerminate-1);
-                                                     
     SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
     SYSCALL(TERMPROCESS, 0, 0, 0);
 }
@@ -108,17 +102,16 @@ int inputTerminal(char* addrReturn, int termNo) {
     return msgLen;
 }
 
-void writeDevice(state_t* state, int asid, int operation) { // TODO
+void writeDevice(state_t* state, int asid, int operation) {
     char* vAddrMsg = (char*)state->reg_a1;
     int msgLen = (int)state->reg_a2;
     if (msgLen < 0 || msgLen > MAXSTRLENG) {
         killUproc(asid);
     }
-    //if ((memaddr)vAddrMsg < SWAP_POOL_START_ADDR ||
-    //    (memaddr)vAddrMsg > SWAP_POOL_START_ADDR+POOLSIZE*PAGESIZE) { // TODO: senza questo funziona, sono probabilmente sbagliati gli indirissia. Prima avevamo messo KUSEG e KUSEGENDPAGES
-    //    print("\nsegfault write\n");
-    //    killUproc(asid);
-    //}
+    if ((memaddr)vAddrMsg < KUSEG || (memaddr)vAddrMsg > 0xFFFFFFFF) {
+        print("\nsegfault write\n");
+        killUproc(asid);
+    }
     int devNo = asid-1;
     int status;
     if (operation == WRITETERMINAL) {
@@ -134,11 +127,10 @@ void writeDevice(state_t* state, int asid, int operation) { // TODO
 #define SWAP_POOL_START_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
 void readTerminal(state_t* state, int asid) {
     char* vAddrReturn = (char*)state->reg_a1;
-    //if ((memaddr)vAddrReturn < SWAP_POOL_START_ADDR ||
-    //    (memaddr)vAddrReturn > SWAP_POOL_START_ADDR+POOLSIZE*PAGESIZE) { // TODO: senza questo funziona, sono probabilmente sbagliati gli indirissia, prima avevamo messo KUSEG e KUSEGENDPAGES
-    //    print("\nsegfault read\n");
-    //    killUproc(asid);
-    //}
+    if ((memaddr)vAddrReturn < KUSEG || (memaddr)vAddrReturn > 0xFFFFFFFF) {
+        print("\nsegfault read\n");
+        killUproc(asid);
+    }
     int devNo = asid-1;
     int status = inputTerminal(vAddrReturn, devNo);
     state->reg_a0 = status;
@@ -153,6 +145,7 @@ void generalExceptHandler()
 
     switch(state->reg_a0) {
         case TERMINATE:
+            //klog_print("terminate | "); // TODO: togli
             killUproc(asid);
             break;
         case WRITEPRINTER:

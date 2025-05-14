@@ -85,7 +85,7 @@ void releaseSwapPoolTable() {
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 }
 
-#define UPROCS 7//UPROCMAX
+#define UPROCS UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
