@@ -1,10 +1,7 @@
 // TODO:
 // - ottimizzazioni in sezione 10
-// - mettere NCPU a 8
-// - mettere UPROCS a UPROCMAX
+//   > rilasciare i semafori dei devices prima di terminare i processi in killUproc
 //
-// > rilasciare i semafori (devices e swapPoolTable) prima di una killUproc
-// > controllo indirizzi in readTerminal e writeDevice
 //
 // UPROCS:
 // 0. strConcat
@@ -162,7 +159,6 @@ void p3test()
 
     for (int i = 0; i < UPROCS; i++) {
         SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
-        //print("P on masterSemaphore\n"); // TODO: togli
 
     }
 

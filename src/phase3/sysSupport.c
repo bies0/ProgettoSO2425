@@ -145,7 +145,6 @@ void generalExceptHandler()
 
     switch(state->reg_a0) {
         case TERMINATE:
-            //klog_print("terminate | "); // TODO: togli
             killUproc(asid);
             break;
         case WRITEPRINTER:

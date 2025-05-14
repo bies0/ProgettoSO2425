@@ -112,7 +112,7 @@ void TLBExceptionHandler() {
         if (supp->sup_privatePgTbl[p].pte_entryLO & ENTRYLO_VALID) { // page is valid
             releaseSwapPoolTable();
 
-            LDST(state); // TODO: non e' GET_EXCEPTION_STATE_PTR(getPRID())
+            LDST(state);
         } 
     }
 
