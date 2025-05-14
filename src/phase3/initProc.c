@@ -16,6 +16,7 @@
 #include "vmSupport.c"
 #include "sysSupport.c"
 
+#define UPROCS UPROCMAX
 #define UPROCSTACKPGADDR 0xBFFFF000
 
 // Print utilities // TODO: togli
@@ -71,6 +72,19 @@ int masterSemaphore;
 swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM]; // TODO: array con gli asid dei processi che tengono la mutua esclusione per liberarla quando il processo viene ucciso
+int suppDevSemsAsid[UPROCMAX] = {-1, -1, -1, -1, -1, -1, -1, -1}; // TODO: facendo esperimenti abbiamo scoperto che così da meno problemi
+// int suppDevSemsAsid[UPROCMAX];
+
+void acquireDevice(int asid, int deviceIndex) {
+    int* sem = &suppDevSems[deviceIndex];
+    SYSCALL(PASSEREN, (int)sem, 0, 0);
+    suppDevSemsAsid[asid-1] = deviceIndex;
+}
+void releaseDevice(int asid, int deviceIndex) {
+    int* sem = &suppDevSems[deviceIndex];
+    suppDevSemsAsid[asid-1] = -1;
+    SYSCALL(VERHOGEN, (int)sem, 0, 0);
+}
 
 int asidSemSwapPool;
 void acquireSwapPoolTable(int asid) {
@@ -81,8 +95,6 @@ void releaseSwapPoolTable() {
     asidSemSwapPool = -1;
     SYSCALL(VERHOGEN, (int)&semSwapPoolTable, 0, 0);
 }
-
-#define UPROCS UPROCMAX
 
 state_t uprocsStates[UPROCS] = {0};
 support_t uprocsSuppStructs[UPROCS] = {0};
@@ -99,6 +111,7 @@ void p3test()
     }
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
+    // for (int i = 0; i < UPROCS; i++) suppDevSemsAsid[i] = -1;
     masterSemaphore = 0;
     asidSemSwapPool = -1;
 
