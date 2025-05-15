@@ -47,9 +47,17 @@ void updateTLB(pteEntry_t *entry)
 #endif
 }
 
+#define BETTERPAGERALGORITHM TRUE
 int pickFrame()
 {
     static int frame = 0;
+    if (BETTERPAGERALGORITHM) {
+        for (int i = 0; i < POOLSIZE; i++) {
+            if (swapPoolTable[i].sw_asid == -1) {
+                return i;
+            }
+        }
+    }
     return ((frame++) % POOLSIZE);
 }
 

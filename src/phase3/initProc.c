@@ -1,18 +1,3 @@
-// TODO:
-// - ottimizzazioni in sezione 10
-//   > rilasciare i semafori dei devices prima di terminare i processi in killUproc
-//
-//
-// UPROCS:
-// 0. strConcat
-// 1. fibEight
-// 2. terminalReader
-// 3. fibEleven
-// 4. terminalTest5
-// 5. terminalTest2
-// 6. terminalTest3
-// 7. printerTest
-
 #include "vmSupport.c"
 #include "sysSupport.c"
 
@@ -72,7 +57,7 @@ int masterSemaphore;
 swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
 int suppDevSems[NSUPPSEM]; // TODO: array con gli asid dei processi che tengono la mutua esclusione per liberarla quando il processo viene ucciso
-int suppDevSemsAsid[UPROCMAX] = {-1, -1, -1, -1, -1, -1, -1, -1}; // TODO: facendo esperimenti abbiamo scoperto che così da meno problemi
+int suppDevSemsAsid[UPROCMAX]; // TODO: facendo esperimenti abbiamo scoperto che così da meno problemi
 // int suppDevSemsAsid[UPROCMAX];
 
 void acquireDevice(int asid, int deviceIndex) {
@@ -111,7 +96,7 @@ void p3test()
     }
     semSwapPoolTable = 1;
     for (int i = 0; i < NSUPPSEM; i++) suppDevSems[i] = 1;
-    // for (int i = 0; i < UPROCS; i++) suppDevSemsAsid[i] = -1;
+    for (int i = 0; i < UPROCS; i++) suppDevSemsAsid[i] = -1;
     masterSemaphore = 0;
     asidSemSwapPool = -1;
 
