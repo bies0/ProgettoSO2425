@@ -13,6 +13,8 @@ extern int suppDevSems[];
 
 extern void acquireSwapPoolTable(int asid);
 extern void releaseSwapPoolTable();
+extern void acquireDevice(int asid, int deviceIndex);
+extern void releaseDevice(int asid, int deviceIndex);
 
 #define SWAP_POOL_START_ADDR (RAMSTART + (64 * PAGESIZE) + (NCPU * PAGESIZE))
 #define GET_SWAP_POOL_ADDR(block) (SWAP_POOL_START_ADDR + (block)*PAGESIZE)
@@ -53,8 +55,11 @@ int pickFrame()
 
 void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: non da mai errore, pero' non sembra funzionare
 {
-    int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
-    SYSCALL(PASSEREN, (int)sem_flash, 0, 0);
+    // int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
+    // SYSCALL(PASSEREN, (int)sem_flash, 0, 0);
+    int semIndex = (FLASH_INTLINENO-3)*DEVPERINT+asid-1;
+    acquireDevice(asid, semIndex);
+
 
     dtpreg_t *devreg = (dtpreg_t *)FLASHADDR(asid);
     int commandAddr = (int)&devreg->command;
@@ -64,7 +69,8 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: n
 
     int status = SYSCALL(DOIO, commandAddr, commandValue, 0);
 
-    SYSCALL(VERHOGEN, (int)sem_flash, 0, 0);
+    // SYSCALL(VERHOGEN, (int)sem_flash, 0, 0);
+    releaseDevice(asid, semIndex);
 
     int error = is_read ? FLASHREAD_ERROR : FLASHWRITE_ERROR;
     if ((status & STATUSMASK) == error) {
