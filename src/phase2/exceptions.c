@@ -1,17 +1,12 @@
 extern void interruptHandler(state_t *state, int exccode);
 extern void syscallHandler();
 extern void scheduler();
-extern void TLBExceptionHandler();
 extern volatile unsigned int global_lock;
 extern pcb_t *current_process[];
-
-extern void print_long_dec(char *msg, unsigned int n);
 
 extern unsigned int get_page_index(unsigned int entry_hi);
 extern void killTree(pcb_t* root); // declared in sysHandler.c
 void passUpOrDie(int index, state_t* state); // forward declaration
-
-void tlbrefill_bp() {} // TODO: togli
 
 void exceptionHandler()
 {
@@ -32,22 +27,21 @@ void exceptionHandler()
     }
 }
 
-// No calls to print in uTLB_RefillHandler!
 void uTLB_RefillHandler() {
     int prid = getPRID();
     state_t *state = GET_EXCEPTION_STATE_PTR(prid);
 
-    unsigned int p = get_page_index(state->entry_hi);
+    unsigned int p = get_page_index(state->entry_hi); // page number of the missing TLB entry
 
     ACQUIRE_LOCK(&global_lock);
     pcb_t *pcb = current_process[prid];
 
-    if (pcb == NULL || pcb->p_supportStruct == NULL) {
+    if (pcb == NULL || pcb->p_supportStruct == NULL) { // it should never occur in phase 3
         RELEASE_LOCK(&global_lock);
         PANIC();
     }
 
-    pteEntry_t *entry = &(pcb->p_supportStruct->sup_privatePgTbl[p]);
+    pteEntry_t *entry = &(pcb->p_supportStruct->sup_privatePgTbl[p]); // page table entry for page number p of the current process
 
     setENTRYHI(entry->pte_entryHI);
     setENTRYLO(entry->pte_entryLO);
@@ -72,10 +66,6 @@ void passUpOrDie(int index, state_t* state) {
     } else {
         caller->p_supportStruct->sup_exceptState[index] = *state;
         context_t* context = &caller->p_supportStruct->sup_exceptContext[index];
-
-        //ACQUIRE_LOCK(&global_lock); // TODO: senza questo ci da' opcode not handled, con questo tutte le CPU vanno tutte in ACQUIRE_LOCK.
-        //current_process[prid] = NULL;
-        //RELEASE_LOCK(&global_lock);
 
         LDCXT(context->stackPtr, context->status, context->pc);
     }

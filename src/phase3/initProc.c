@@ -4,61 +4,13 @@
 #define UPROCS UPROCMAX
 #define UPROCSTACKPGADDR 0xBFFFF000
 
-// Print utilities // TODO: togli
-extern void print(char *msg);
-extern int printToTerminal(char* msg, int lenMsg, int termNo);
-extern int printToPrinter(char* msg, int lenMsg, int printNo);
-extern int inputTerminal(char* addrReturn, int termNo);
-void print_dec(char *msg, unsigned int n)
-{
-    if (n < 10) {
-        char n_str[] = {n + '0', '\0'};
-        print(msg);
-        print(n_str);
-        print("\n");
-        return;
-    } 
-    print(msg);
-    while (n > 0) {
-        int d = n % 10;
-        char d_str[] = {d + '0', '\0'};
-        print(d_str);
-        n /= 10;
-    }
-    print("\n");
-}
-void print_hex(char *msg, unsigned int n)
-{
-    const char digits[] = "0123456789ABCDEF";
-
-    print(msg);
-    do {
-        char c = digits[n % 16];
-        char str[] = {c, '\0'};
-        print(str); 
-        n /= 16;
-    } while (n > 0);
-    print("\n");
-}
-void print_state(state_t *state)
-{
-    print("state:\n");
-    print_hex("  entryHi = ", state->entry_hi);
-    print_hex("  pc      = ", state->pc_epc);
-    print_hex("  status  = ", state->status);
-}
-//////////
-
-void breakpoint() {}
-
 // Data Structures
 int masterSemaphore;
 
 swap_t swapPoolTable[POOLSIZE];
 int semSwapPoolTable;
-int suppDevSems[NSUPPSEM]; // TODO: array con gli asid dei processi che tengono la mutua esclusione per liberarla quando il processo viene ucciso
-int suppDevSemsAsid[UPROCMAX]; // TODO: facendo esperimenti abbiamo scoperto che così da meno problemi
-// int suppDevSemsAsid[UPROCMAX];
+int suppDevSems[NSUPPSEM]; // devices semaphores in support level
+int suppDevSemsAsid[UPROCMAX]; // contains the index in suppDevSems of the device that the uproc is holding in mutual exclusion. When the uproc is terminated, if it's holding a device, it should free it.
 
 void acquireDevice(int asid, int deviceIndex) {
     int* sem = &suppDevSems[deviceIndex];
@@ -71,7 +23,7 @@ void releaseDevice(int asid, int deviceIndex) {
     SYSCALL(VERHOGEN, (int)sem, 0, 0);
 }
 
-int asidSemSwapPool;
+int asidSemSwapPool; // contains the asid of the uproc currently holding the swap pool table
 void acquireSwapPoolTable(int asid) {
     SYSCALL(PASSEREN, (int)&semSwapPoolTable, 0, 0);
     asidSemSwapPool = asid;
@@ -100,16 +52,9 @@ void p3test()
     masterSemaphore = 0;
     asidSemSwapPool = -1;
 
-    // print("test funzioni syscall, scrivi una linea:\n");
-    // char str[100]; // TODO: solo per fare vedere a Mathieu e a Flowerboy che funzionano
-    // int msgLen = inputTerminal(&str[0], 0);
-    // printToTerminal(&str[0], msgLen, 0);
-    // printToPrinter(&str[0], msgLen, 7);
-
-
     // U-Procs Initialization
     for (int i = 0; i < UPROCS; i++) {
-        int ASID = i+1;
+        int ASID = i+1; // asids goes from 1 to 8 (0 is kernel's daemon)
 
         // States Initialization
         uprocsStates[i] = (state_t){
@@ -144,7 +89,7 @@ void p3test()
             else vpn = UPROCSTACKPGADDR; // page 32 is set to the stack starting address
 
             unsigned int entryHi = vpn | (ASID << ASIDSHIFT);
-            unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are set to 0
+            unsigned int entryLO = DIRTYON; // GLOBALON and VALIDON are already set to 0
             uprocsSuppStructs[i].sup_privatePgTbl[j] = (pteEntry_t){
                 .pte_entryHI = entryHi,
                 .pte_entryLO = entryLO
@@ -155,9 +100,8 @@ void p3test()
 
     }
 
-    for (int i = 0; i < UPROCS; i++) {
-        SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0); // TODO: segnalare ai tutor che sulle specifiche dice di fare la V
-
+    for (int i = 0; i < UPROCS; i++) { // P on the master semaphore to wait for every uproc to terminate
+        SYSCALL(PASSEREN, (int)&masterSemaphore, 0, 0);
     }
 
     print("\nTest successfully ended!\n");

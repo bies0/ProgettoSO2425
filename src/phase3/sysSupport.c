@@ -1,18 +1,8 @@
-// mancava la macro in const.h // segnalare ai tutor
 #define READTERMINAL 5
 
-#define KUSEGENDPAGES (KUSEG+PAGESIZE*(MAXPAGES-1))
-
-#include "../klog.c"
-
-extern void print(char *msg);
-extern void print_dec(char *msg, unsigned int n);
-
 extern void restoreCurrentProcess(state_t *state);
-extern int suppDevSems[NSUPPSEM];
 extern int suppDevSemsAsid[UPROCMAX];
 
-extern volatile unsigned int global_lock;
 extern int asidSemSwapPool;
 extern void acquireSwapPoolTable(int asid);
 extern void releaseSwapPoolTable();
@@ -21,10 +11,8 @@ extern void releaseDevice(int asid, int deviceIndex);
 
 extern int masterSemaphore;
 
-int printToPrinter(char* msg, int lenMsg, int printNo);
-
 void killUproc(int asidToTerminate) {
-    if (asidSemSwapPool != asidToTerminate) { // TODO: commentare il fatto che non e' un problema se non accediamo questa variabile globale in mutua esclusione
+    if (asidSemSwapPool != asidToTerminate) {
         acquireSwapPoolTable(asidToTerminate);
     }
     for (int i = 0; i < POOLSIZE; i++) { // Optimization to eliminate extraneous writes to the backing store
@@ -35,12 +23,12 @@ void killUproc(int asidToTerminate) {
     }
     releaseSwapPoolTable();
 
-    int deviceIndex = suppDevSemsAsid[asidToTerminate-1];
+    int deviceIndex = suppDevSemsAsid[asidToTerminate-1]; // release device if the uprocs was holding it
     if (deviceIndex != -1) {
         releaseDevice(asidToTerminate, deviceIndex);
     }
 
-    SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0);
+    SYSCALL(VERHOGEN, (int)&masterSemaphore, 0, 0); // signals to the main process that the uproc terminated
     SYSCALL(TERMPROCESS, 0, 0, 0);
 }
 

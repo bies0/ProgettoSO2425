@@ -1,15 +1,5 @@
-extern void print(char *msg);
-extern void print_dec(char *msg, unsigned int n);
-extern void print_hex(char *msg, unsigned int n);
-extern void print_state(state_t *state);
-
-extern void breakpoint();
-
-extern volatile unsigned int global_lock; 
-extern struct pcb_t *current_process[];
 extern swap_t swapPoolTable[];
 extern void supportTrapHandler(int asidToTerminate);
-extern int suppDevSems[];
 
 extern void acquireSwapPoolTable(int asid);
 extern void releaseSwapPoolTable();
@@ -23,20 +13,21 @@ extern void releaseDevice(int asid, int deviceIndex);
 #define FLASHREAD_ERROR 4
 #define STATUSMASK 0XFF
 #define FLASHADDR(asid) DEV_REG_ADDR(IL_FLASH, asid-1)
+#define STACK_VPN (ENTRYHI_VPN_MASK >> VPNSHIFT)
 
 unsigned int get_page_index(unsigned int entry_hi)
 {
     unsigned int vpn = ENTRYHI_GET_VPN(entry_hi);
-    if (vpn == (ENTRYHI_VPN_MASK >> VPNSHIFT)) return USERPGTBLSIZE-1;
+    if (vpn == STACK_VPN) return USERPGTBLSIZE-1; // if the issued page is the stack one, returns the stack page number (31)
     else return vpn;
 }
 
-#define BETTERUPDATETLB // TODO
+#define BETTERUPDATETLB // switch between the two tlb update algorithms
 void updateTLB(pteEntry_t *entry)
 {
-#ifndef BETTERUPDATETLB
+#ifndef BETTERUPDATETLB // simply clears the tlb
     TLBCLR();
-#else
+#else // probe the tlb to check if it needs to be updated
     setENTRYHI(entry->pte_entryHI);
     TLBP();
     unsigned int index = getINDEX();
@@ -47,27 +38,25 @@ void updateTLB(pteEntry_t *entry)
 #endif
 }
 
-#define BETTERPAGERALGORITHM TRUE
+#define BETTERPAGERALGORITHM TRUE // switch between two page algorithms 
 int pickFrame()
 {
     static int frame = 0;
-    if (BETTERPAGERALGORITHM) {
+    if (BETTERPAGERALGORITHM) { // searches for an unoccupied page
         for (int i = 0; i < POOLSIZE; i++) {
             if (swapPoolTable[i].sw_asid == -1) {
                 return i;
             }
         }
     }
-    return ((frame++) % POOLSIZE);
+    return ((frame++) % POOLSIZE); // round robin
 }
 
-void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: non da mai errore, pero' non sembra funzionare
+// Dispatches an I/O operation on a flash device. In particular, addr is the frame address in the swap pool to be read/written and block is the block in the flash to be read/written.
+void flashRW(unsigned int asid, memaddr addr, int block, int is_read)
 {
-    // int *sem_flash = &suppDevSems[(FLASH_INTLINENO-3)*DEVPERINT+asid-1]; // the semaphore associated with the flash device
-    // SYSCALL(PASSEREN, (int)sem_flash, 0, 0);
     int semIndex = (FLASH_INTLINENO-3)*DEVPERINT+asid-1;
     acquireDevice(asid, semIndex);
-
 
     dtpreg_t *devreg = (dtpreg_t *)FLASHADDR(asid);
     int commandAddr = (int)&devreg->command;
@@ -77,11 +66,10 @@ void flashRW(unsigned int asid, memaddr addr, int block, int is_read) // TODO: n
 
     int status = SYSCALL(DOIO, commandAddr, commandValue, 0);
 
-    // SYSCALL(VERHOGEN, (int)sem_flash, 0, 0);
     releaseDevice(asid, semIndex);
 
     int error = is_read ? FLASHREAD_ERROR : FLASHWRITE_ERROR;
-    if ((status & STATUSMASK) == error) {
+    if ((status & STATUSMASK) == error) { // treat flash I/O error as a program trap
         releaseSwapPoolTable();
         supportTrapHandler(asid);
     }
@@ -102,8 +90,7 @@ void TLBExceptionHandler() {
     support_t *supp = (support_t *)SYSCALL(GETSUPPORTPTR, 0, 0, 0); 
     state_t *state = &(supp->sup_exceptState[PGFAULTEXCEPT]);
 
-    if (state->cause == EXC_MOD) {
-        // treat it as a program trap
+    if (state->cause == EXC_MOD) { // treat it as a program trap
         supportTrapHandler(supp->sup_asid);
     }
 
@@ -113,7 +100,7 @@ void TLBExceptionHandler() {
 
     int i = 0;
     int found = FALSE;
-    while (!found && i < POOLSIZE) {
+    while (!found && i < POOLSIZE) { // check if the page is loaded in the swap pool
         unsigned int sw_asid = swapPoolTable[i].sw_asid;
         if (sw_asid == ASID && swapPoolTable[i].sw_pageNo == p) {
             found = TRUE;     
@@ -130,12 +117,12 @@ void TLBExceptionHandler() {
         } 
     }
 
-    int frame = pickFrame(); // TODO: se po fa' mejo // this is frame i
+    int frame = pickFrame(); // this is frame i
     memaddr frame_addr = GET_SWAP_POOL_ADDR(frame);
     swap_t *swap = &swapPoolTable[frame];
     int occupied = swap->sw_asid != -1;
     if (occupied) {
-        int k = swap->sw_pageNo;    
+        int k = swap->sw_pageNo; // page number of the occupying page
         pteEntry_t *entry = swap->sw_pte;
         entry->pte_entryLO &= ~VALIDON; // invalidate page k
         int x_asid = swap->sw_asid;
@@ -143,18 +130,17 @@ void TLBExceptionHandler() {
         writeFlash(x_asid, frame_addr, k);
     }
     readFlash(ASID, frame_addr, p);
+    // update swap pool table entry
     swap->sw_asid = ASID;
     swap->sw_pageNo = p;
     swap->sw_pte = &supp->sup_privatePgTbl[p];
-    swap->sw_pte->pte_entryLO |= VALIDON;
+    swap->sw_pte->pte_entryLO |= VALIDON; // validate page p
     swap->sw_pte->pte_entryLO &= ~ENTRYLO_PFN_MASK; // set PFN to 0
     swap->sw_pte->pte_entryLO |= (frame_addr); // set PFN to frame i's address
 
-    releaseSwapPoolTable();
+    updateTLB(swap->sw_pte);
 
-    // char buf[10]; // TODO: togli, sono prove per le syscall
-    // int status = SYSCALL(5, (int)&buf[0], 0, 0);
-    // SYSCALL(WRITETERMINAL, (int)&buf[0], status, 0);
+    releaseSwapPoolTable();
 
     LDST(state);
 }
