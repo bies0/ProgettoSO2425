@@ -2,8 +2,6 @@
 #include "../phase1/headers/asl.h"
 #include "../headers/const.h"
 
-//#include "../klog.c" // TODO: togli!
-
 #include "uriscv/arch.h"
 #include "uriscv/cpu.h"
 
@@ -68,7 +66,7 @@ int main()
     pcb_t *first_pcb = allocPcb();
 
     first_pcb->p_s = (state_t){
-        .pc_epc = (memaddr)p3test, // Currently testing phase 3 (TODO)
+        .pc_epc = (memaddr)p3test, // Currently testing phase 3
         //.pc_epc = (memaddr)test, // Currently testing phase 2
         .mie = MIE_ALL,
         .status = MSTATUS_MPIE_MASK | MSTATUS_MPP_M,
